@@ -4,7 +4,7 @@ This is a Flask-based web application for stock price prediction using AI/ML mod
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.9 or 3.10
 - Windows PowerShell or Command Prompt
 
 ## Setup Instructions
