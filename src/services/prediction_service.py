@@ -19,7 +19,7 @@ class PredictionService:
     
     def predict(self, symbol: str, period: str = "1y", days: int = 7, model_type: str = "linear_regression") -> Dict[str, Any]:
         """
-        Simple prediction using trained models
+        Simple prediction using trained models - no validation
         
         Args:
             symbol: Stock symbol (e.g., 'AAPL')
@@ -32,10 +32,14 @@ class PredictionService:
             symbol = symbol.upper().strip()
             days = max(1, min(30, days))
             
-            # Get historical data
+            # Get historical data directly - no validation
             df = StockDataService.get_historical_data(symbol, period)
             if df is None or df.empty:
-                return {"error": f"No historical data available for {symbol}"}
+                return {
+                    "error": f"No historical data available for {symbol}",
+                    "symbol": symbol,
+                    "period": period
+                }
             
             # Check if model exists
             model_file = f"{symbol}_{model_type}_model"
@@ -76,7 +80,12 @@ class PredictionService:
             return result
             
         except Exception as e:
-            return {"error": f"Prediction failed: {str(e)}"}
+            logger.error(f"Prediction error for {symbol}: {e}")
+            return {
+                "error": f"Prediction failed: {str(e)}",
+                "symbol": symbol,
+                "period": period
+            }
     
     def _predict_with_model(self, symbol: str, df: pd.DataFrame, model_type: str, days: int) -> List[float]:
         """Generate predictions using specific model type"""

@@ -31,8 +31,6 @@ def train_and_evaluate_models():
         
         if not isinstance(models_to_train, list) or not models_to_train:
             errors.append("models_to_train must be a non-empty list")
-        elif len(models_to_train) > 5:
-            errors.append("Maximum 5 models allowed")
         
         # Validate model types
         supported_models = list(ml_service.supported_models.keys())
