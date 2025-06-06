@@ -37,7 +37,17 @@ mkdir AI-powered-web
 cd AI-powered-web
 ```
 
-### 2. Set Up Python Virtual Environment
+### 2. Clone the Repository
+
+Clone the project repository into your project folder:
+
+```powershell
+git clone <repo-url>
+```
+
+Replace `<repo-url>` with the actual repository URL.
+
+### 3. Set Up Python Virtual Environment
 
 Create a virtual environment **outside** the cloned repository to avoid tracking `venv` with Git:
 
@@ -55,16 +65,6 @@ Activate the virtual environment:
 > ```powershell
 > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 > ```
-
-### 3. Clone the Repository
-
-Clone the project repository into your project folder:
-
-```powershell
-git clone <repo-url>
-```
-
-Replace `<repo-url>` with the actual repository URL.
 
 ### 4. Install Dependencies
 
