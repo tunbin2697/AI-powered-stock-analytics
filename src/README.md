@@ -1,6 +1,7 @@
 # Project Structure and Development Guide
 
 This document provides an overview of the `routes` and `services` folders in this project, along with guidance for custom frontend development and API testing.
+The main idea of this project is using python to handle data fetch form yfinance and other source, process those data and then train models. Use those model for prediction purpose.
 
 ## Folder Structure
 
@@ -23,37 +24,31 @@ Routes call methods within these services to perform the actual work, keeping th
 
 ## Custom Frontend Development
 
-The project might come with a default `index.html` or a basic frontend. For development purposes, you'll likely want to replace this with your own custom HTML, CSS, and JavaScript files to build your user interface.
+The project come with a default `index.html`. For development purposes, you'll want to replace this with your own custom HTML, CSS, and JavaScript files to build your user interface.
 
 **Steps to integrate your custom frontend:**
 
-1.  **Locate the Static Files Directory:** Your Flask application will be configured to serve static files (HTML, CSS, JS, images) from a specific directory. This is often a folder named `static` or `public` at the root of your `src` directory or alongside your main application file. If one doesn't exist, you might need to create it and configure Flask to use it.
-
-    - _Example Flask configuration (in your main app.py or where you create the Flask app instance):_
-      ```python
-      # app = Flask(__name__, static_folder='static', static_url_path='')
-      # Or if your static files are in 'src/static' and your app is in 'src'
-      # app = Flask(__name__, static_folder='static')
-      ```
+1.  **Locate the Static Files Directory:** Your Flask application will be configured to serve static files (HTML, CSS, JS) from a specific directory. This is  a folder named `static` contain JavaScripts and CSS; `template` contain main html file called `index.html` at the root of your `src` directory or alongside your main application file. I
 
 2.  **Remove or Replace `index.html`:**
 
     - Navigate to the directory where `index.html` (or the main HTML file) is served from.
     - You can delete the existing `index.html`.
     - Place your main HTML file (e.g., `your_main_page.html`) in this directory. If you name it `index.html`, it will typically be served by default when accessing the root URL (e.g., `http://localhost:5000/`).
+    - You also dont need to remove CSS and JavaScripts file, just leave it there and use your own in you html file (next step)
 
 3.  **Add Your CSS and JS Files:**
 
-    - Create subdirectories within your static folder for CSS (e.g., `static/css/`) and JavaScript (e.g., `static/js/`).
-    - Place your `.css` files in the CSS directory and your `.js` files in the JavaScript directory.
+    - Create your own CSS and JavaScripts files that will make you HTML file work.
+    - Place your `.css` files and your `.js` files in somewhere, should be the templates folder and use the path to them in your html code as next step.
     - Link them in your HTML file:
       ```html
       <!-- In your HTML file -->
-      <link rel="stylesheet" href="/static/css/your_styles.css" />
+      <link rel="stylesheet" href="/<your path to css file>/your_styles.css" />
       <!-- ... -->
-      <script src="/static/js/your_script.js"></script>
+      <script src="/<your path to js file>/your_script.js"></script>
       ```
-      _(Adjust paths if your `static_url_path` is different)_
+      _(Adjust paths if your `path` is different)_
 
 4.  **Using an AI Assistant for Frontend Code:**
     - If you need help generating HTML, CSS, or JavaScript for your frontend, you can describe your desired layout, components, or functionality to an AI programming assistant (like GitHub Copilot).
