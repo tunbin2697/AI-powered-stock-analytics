@@ -14,8 +14,13 @@ logger = logging.getLogger(__name__)
 
 class PredictionService:
     def __init__(self):
-        self.models_dir = "src/models"
-        self.ml_service = MLService(models_dir=self.models_dir)
+            # Get the absolute path to the directory containing this script (services)
+            current_script_dir = os.path.dirname(os.path.abspath(__file__))
+            # Construct the absolute path to the 'src/models' directory
+            # This assumes 'models' is a sibling directory to 'services' parent 'src'
+            # i.e., src/models and src/services
+            self.models_dir = os.path.abspath(os.path.join(current_script_dir, "..", "models"))
+            self.ml_service = MLService(models_dir=self.models_dir)
     
     def predict(self, symbol: str, period: str = "1y", days: int = 7, model_type: str = "linear_regression") -> Dict[str, Any]:
         """
