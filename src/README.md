@@ -32,7 +32,7 @@ The project come with a default `index.html`. For development purposes, you'll w
 
 2.  **Remove or Replace `index.html`:**
 
-    - Navigate to the directory where `index.html` (or the main HTML file) is served from.
+    - Navigate to the directory `templates`.
     - You can delete the existing `index.html`.
     - Place your main HTML file (e.g., `your_main_page.html`) in this directory. If you name it `index.html`, it will typically be served by default when accessing the root URL (e.g., `http://localhost:5000/`).
     - You also dont need to remove CSS and JavaScripts file, just leave it there and use your own in you html file (next step)
