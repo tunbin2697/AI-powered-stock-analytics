@@ -6,7 +6,8 @@ A Flask-based web application for stock price prediction using AI/ML models.
 
 ## Prerequisites
 
-- Python 3.9 or 3.10
+- Python 3.9 or 3.10 (you can chose which python to run by unsing cmp and run "where python", it will return the path to your python with its version ex C:\Users\ADMIN\AppData\Local\Programs\Python\Python310\python.exe
+C:\Users\ADMIN\AppData\Local\Programs\Python\Python313\python.exe. Use that part instead of python ex: C:\Users\ADMIN\AppData\Local\Programs\Python\Python310\python.exe -m venv venv )
 - Windows PowerShell or Command Prompt
 - [Git](https://git-scm.com/)
 - [Visual Studio Code](https://code.visualstudio.com/) (recommended)
