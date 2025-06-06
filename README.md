@@ -1,5 +1,3 @@
-rewrite this readme in the readme markup format. asked user to create a folder call AI-powered-web (or there choice), then run the python enviroment set up as in the readme. then git clone the repo. then cd in to the repo clone folder, then cd to src, then run the app.py. the reason behind this is when vevn in under the same folder to .git, every time use git add . , it will force we to add the venv file which is not good. also guild them to select python interpreter in vs code to the venv:
-
 # Stock Price AI Application
 
 This is a Flask-based web application for stock price prediction using AI/ML models.
