@@ -34,19 +34,19 @@ The project come with a default `index.html`. For development purposes, you'll w
 
     - Navigate to the directory `templates`.
     - You can delete the existing `index.html`.
-    - Place your main HTML file (e.g., `your_main_page.html`) in this directory. If you name it `index.html`, it will typically be served by default when accessing the root URL (e.g., `http://localhost:5000/`).
+    - Place your main HTML file (e.g., `your_main_page.html`) in this directory. You should name it `index.html`, it will typically be served by default when accessing the root URL (e.g., `http://localhost:5000/`).
     - You also dont need to remove CSS and JavaScripts file, just leave it there and use your own in you html file (next step)
 
 3.  **Add Your CSS and JS Files:**
 
     - Create your own CSS and JavaScripts files that will make you HTML file work.
-    - Place your `.css` files and your `.js` files in somewhere, should be the templates folder and use the path to them in your html code as next step.
+    - Place your `.css` files and your `.js` files in somewhere. You should use the templates folder and copy the path to them in your html code as show in next step.
     - Link them in your HTML file:
       ```html
       <!-- In your HTML file -->
-      <link rel="stylesheet" href="/<your path to css file>/your_styles.css" />
+      <link rel="stylesheet" href="/your_styles.css" />
       <!-- ... -->
-      <script src="/<your path to js file>/your_script.js"></script>
+      <script src="/your_script.js"></script>
       ```
       _(Adjust paths if your `path` is different)_
 
