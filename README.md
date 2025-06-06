@@ -1,74 +1,116 @@
 # Stock Price AI Application
 
-This is a Flask-based web application for stock price prediction using AI/ML models.
+A Flask-based web application for stock price prediction using AI/ML models.
+
+---
 
 ## Prerequisites
 
 - Python 3.9 or 3.10
 - Windows PowerShell or Command Prompt
+- [Git](https://git-scm.com/)
+- [Visual Studio Code](https://code.visualstudio.com/) (recommended)
+
+---
 
 ## Setup Instructions
 
-### 1. Create Virtual Environment
+### 1. Create a Project Folder
 
-First, navigate to the project root directory and create a virtual environment with Python 3.10:
+Create a new folder for your project (e.g., `AI-powered-web` or a name of your choice):
 
-```bash
+```powershell
+mkdir AI-powered-web
+cd AI-powered-web
+```
+
+### 2. Set Up Python Virtual Environment
+
+Create a virtual environment **outside** the cloned repository to avoid tracking `venv` with Git:
+
+```powershell
 python -m venv venv
 ```
 
-### 2. Activate Virtual Environment
-
-Activate the virtual environment using PowerShell:
+Activate the virtual environment:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
 ```
 
-**Note:** If you encounter an execution policy error, run this command first:
+> **Note:** If you encounter an execution policy error, run:
+> ```powershell
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+
+### 3. Clone the Repository
+
+Clone the project repository into your project folder:
+
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+git clone <repo-url>
 ```
 
-### 3. Install Dependencies
+Replace `<repo-url>` with the actual repository URL.
 
-Install the required packages from requirements.txt:
+### 4. Install Dependencies
 
-```bash
+Navigate into the cloned repository folder, then install dependencies:
+
+```powershell
+cd AI-powered-stock-analytics
 pip install -r requirements.txt
 ```
 
-### 4. Run the Application
+### 5. Run the Application
 
-Navigate to the src directory and run the Flask application:
+Navigate to the `src` directory and start the Flask app:
 
-```bash
+```powershell
 cd src
 python app.py
 ```
 
-The application will start running on `http://127.0.0.1:5000` by default.
+The application will run at [http://127.0.0.1:5000](http://127.0.0.1:5000) by default.
+
+---
+
+## Visual Studio Code Setup
+
+1. Open the project folder in VS Code.
+2. Press `Ctrl+Shift+P` and select **Python: Select Interpreter**.
+3. Choose the interpreter from your `venv` folder (e.g., `.venv\Scripts\python.exe`).
+
+---
 
 ## Project Structure
 
 ```
-final project/
-├── venv/                 # Virtual environment
-├── src/                  # Source code
-│   ├── app.py           # Main Flask application
-│   ├── config/          # Configuration files
-│   ├── routes/          # API routes
-│   ├── static/          # Static files (CSS, JS, assets)
-│   └── templates/       # HTML templates
-├── requirements.txt     # Python dependencies
-└── README.md           # This file
+AI-powered-web/
+├── venv/                      # Virtual environment (outside repo)
+├── AI-powered-stock-analytics/ # Cloned repository
+│   ├── src/
+│   │   ├── app.py
+│   │   ├── config/
+│   │   ├── routes/
+│   │   ├── static/
+│   │   └── templates/
+│   ├── requirements.txt
+│   └── README.md
 ```
+
+---
 
 ## Troubleshooting
 
-- **PowerShell Execution Policy Error**: Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-- **Module Not Found Error**: Ensure virtual environment is activated and dependencies are installed
-- **Port Already in Use**: Change the port in config settings or kill the process using the port
+- **PowerShell Execution Policy Error:**  
+  Run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+- **Module Not Found Error:**  
+  Ensure the virtual environment is activated and dependencies are installed.
+- **Port Already in Use:**  
+  Change the port in config settings or stop the process using the port.
+
+---
 
 ## Features
 
