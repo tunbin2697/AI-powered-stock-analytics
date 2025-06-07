@@ -109,11 +109,6 @@ def get_supported_models():
                     "supports_epochs": True
                 },
                 {
-                    "id": "prophet", 
-                    "label": "Prophet",
-                    "supports_epochs": False
-                },
-                {
                     "id": "arima", 
                     "label": "ARIMA",
                     "supports_epochs": False
