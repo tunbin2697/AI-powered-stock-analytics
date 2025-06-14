@@ -958,13 +958,295 @@
             error.message
           );
         }
-      }
-
-      // Auto-refresh model status every 30 seconds
+      } // Auto-refresh model status every 30 seconds
       setInterval(getModelStatus, 30000);
 
       // Initial status check
-      getModelStatus();
+      getModelStatus(); // Fake Chatbot Functions
+      const geminiResponses = [
+        "DAVOTS (Deep Attribution Visualization Over Time Series) is a sophisticated explainable AI technique that provides temporal feature attribution for time series models. It helps understand which features contribute most to predictions at different time points.",
+        "TGNN++ (Temporal Graph Neural Network Plus Plus) is an advanced architecture that combines graph neural networks with temporal modeling. It's designed to capture both spatial relationships between features and temporal dependencies in time series data.",
+        "ICFTS (Interventional Causal Framework for Time Series) is a causal inference method that uses interventional analysis to understand cause-and-effect relationships in temporal data. It helps identify which variables actually drive changes in predictions.",
+        "Yahoo Finance API provides real-time and historical stock market data including prices, volumes, dividends, and stock splits. It's a popular data source for financial analysis and algorithmic trading systems.",
+        "Macro indicators like Federal Funds Rate, GDP, unemployment rate, and CPI are crucial economic metrics that influence stock market movements. They represent the broader economic environment affecting individual securities.",
+        "News embeddings are vector representations of financial news articles created using natural language processing. They capture semantic meaning and sentiment, allowing models to incorporate news sentiment into stock predictions.",
+        "Technical indicators like RSI, MACD, Bollinger Bands, and moving averages are mathematical calculations based on price and volume data. They help identify trends, momentum, and potential reversal points in stock prices.",
+        "The integrated gradients method computes feature attributions by integrating gradients along a path from a baseline to the actual input. This provides more stable and meaningful feature importance scores than simple gradients.",
+        "Multi-modal data integration combines different types of information (price data, news, macroeconomic indicators) into a unified dataset. This provides a more comprehensive view for financial prediction models.",
+        "Temporal Graph Neural Networks excel at modeling complex relationships between features that change over time. They can capture how the importance of different economic indicators varies during different market conditions.",
+        "Feature attribution helps explain why a model made a specific prediction by showing which input features contributed most to that decision. This is crucial for building trust in AI-driven financial decisions.",
+        "The FRED (Federal Reserve Economic Data) API provides access to thousands of economic time series data from various government agencies. It's essential for incorporating macroeconomic context into financial models.",
+        "Volatility clustering in financial markets means that periods of high volatility tend to be followed by periods of high volatility. TGNN++ can capture these temporal patterns through its attention mechanisms.",
+        "Concept drift occurs when the statistical properties of the data change over time, causing model performance to degrade. DAVOTS can help detect when models are relying on outdated patterns.",
+        "Sentiment analysis of financial news uses NLP techniques to extract emotional tone and market sentiment from text. This sentiment can be a powerful predictor of short-term stock movements.",
+      ];
+      const watsonResponses = [
+        "DAVOTS represents a breakthrough in explainable artificial intelligence for temporal data analysis. It provides granular insights into how deep learning models make predictions by attributing importance to features across time dimensions.",
+        "TGNN++ architecture represents a significant advancement in temporal modeling for financial applications. It combines the spatial reasoning capabilities of graph neural networks with sophisticated temporal attention mechanisms.",
+        "ICFTS methodology enables robust causal inference in financial time series by using interventional techniques. This approach helps distinguish between correlation and causation in complex market dynamics.",
+        "Yahoo Finance integration provides enterprise-grade market data access with comprehensive coverage of global equities, indices, and derivatives. Its API supports real-time and historical data retrieval for systematic trading strategies.",
+        "Macroeconomic indicators serve as leading, lagging, and coincident signals for market movements. Watson's analysis shows that incorporating FRED data significantly improves prediction accuracy in volatile market conditions.",
+        "Natural language processing for financial news requires sophisticated sentiment analysis and entity recognition. Watson's NLP capabilities can extract actionable insights from unstructured financial text data.",
+        "Technical analysis indicators like RSI, MACD, and Bollinger Bands provide quantitative measures of market momentum and mean reversion. These indicators are particularly effective when combined with fundamental analysis.",
+        "Gradient-based attribution methods provide mathematically rigorous explanations for neural network decisions. Watson recommends integrated gradients for their stability and theoretical foundations in cooperative game theory.",
+        "Enterprise data integration requires robust ETL pipelines that can handle multiple data sources with different frequencies and formats. Watson's data integration capabilities ensure consistency and reliability.",
+        "Temporal Graph Neural Networks excel at modeling complex interdependencies in financial systems. They can capture how correlations between assets change during different market regimes and economic cycles.",
+        "Model interpretability is crucial for regulatory compliance in financial services. Watson's XAI capabilities help institutions meet MiFID II and other regulatory requirements for algorithmic trading transparency.",
+        "Federal Reserve Economic Data (FRED) provides comprehensive macroeconomic context for financial models. Watson can automatically select and engineer relevant macro features based on economic theory and empirical evidence.",
+        "Volatility forecasting requires sophisticated models that can capture clustering, mean reversion, and regime switching. TGNN++ architecture is particularly well-suited for modeling these complex temporal dynamics.",
+        "Risk management applications benefit significantly from explainable AI techniques. Watson's risk analytics can identify potential model failures and provide early warning signals for portfolio managers.",
+        "Time series forecasting in financial markets requires handling non-stationarity, structural breaks, and regime changes. Watson's adaptive learning algorithms can automatically adjust to changing market conditions.",
+      ];
+
+      function sendMessageToGemini() {
+        const input = document.getElementById("gemini-input");
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Add user message
+        addMessageToChat("gemini-chat", message, "user", "You");
+        input.value = "";
+
+        // Simulate typing delay and add random response
+        setTimeout(() => {
+          const response =
+            geminiResponses[Math.floor(Math.random() * geminiResponses.length)];
+          addMessageToChat("gemini-chat", response, "assistant", "Gemini");
+        }, 1000 + Math.random() * 1000);
+      }
+
+      function sendMessageToWatson() {
+        const input = document.getElementById("watson-input");
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Add user message
+        addMessageToChat("watson-chat", message, "user", "You");
+        input.value = "";
+
+        // Simulate typing delay and add random response
+        setTimeout(() => {
+          const response =
+            watsonResponses[Math.floor(Math.random() * watsonResponses.length)];
+          addMessageToChat("watson-chat", response, "assistant", "Watson");
+        }, 1200 + Math.random() * 800);
+      }
+
+      function addMessageToChat(chatId, message, type, sender) {
+        const chat = document.getElementById(chatId);
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `chat-message ${type}-message mb-3`;
+
+        const badgeClass =
+          sender === "Gemini"
+            ? "bg-primary"
+            : sender === "Watson"
+            ? "bg-info"
+            : "bg-secondary";
+
+        messageDiv.innerHTML = `
+          <div class="d-flex mb-2">
+            <div class="badge ${badgeClass} me-2">${sender}</div>
+            <div class="flex-grow-1">
+              <div class="p-2 rounded ${
+                type === "user" ? "bg-primary text-white ms-5" : "bg-light"
+              }" style="box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                ${message}
+              </div>
+              <small class="text-muted">Just now</small>
+            </div>
+          </div>
+        `;
+
+        chat.appendChild(messageDiv);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      // Allow Enter key to send messages
+      document.addEventListener("DOMContentLoaded", function () {
+        document
+          .getElementById("gemini-input")
+          ?.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+              sendMessageToGemini();
+            }
+          });
+
+        document
+          .getElementById("watson-input")
+          ?.addEventListener("keypress", function (e) {
+            if (e.key === "Enter") {
+              sendMessageToWatson();
+            }
+          });
+      });
     </script>
+
+    <!-- Fake Chatbot Comparison Section -->
+    <div class="container-fluid mt-5">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-info text-white">
+              <h4>
+                <i class="fas fa-robot"></i> AI Assistant Comparison - DAVOTS
+                Explanation
+              </h4>
+              <p class="mb-0"></p>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <!-- Gemini Chatbot -->
+                <div class="col-md-6">
+                  <div class="card border-primary">
+                    <div class="card-header bg-primary text-white">
+                      <h5>🤖 Google Gemini</h5>
+                    </div>
+                    <div class="card-body">
+                      <div
+                        class="chat-container"
+                        id="gemini-chat"
+                        style="
+                          height: 400px;
+                          overflow-y: auto;
+                          border: 1px solid #ddd;
+                          padding: 15px;
+                          background-color: #f8f9fa;
+                          border-radius: 8px;
+                        "
+                      >
+                        <div class="chat-message assistant-message mb-3">
+                          <div class="d-flex mb-2">
+                            <div class="badge bg-primary me-2">Gemini</div>
+                            <div class="flex-grow-1">
+                              <div
+                                class="bg-light p-2 rounded"
+                                style="box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1)"
+                              >
+                                Hello! I'm Google Gemini. Ask me anything about
+                                DAVOTS and explainable AI!
+                              </div>
+                              <small class="text-muted">Just now</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="input-group mt-3">
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="gemini-input"
+                          placeholder="Ask Gemini about DAVOTS..."
+                        />
+                        <button
+                          class="btn btn-primary"
+                          onclick="sendMessageToGemini()"
+                        >
+                          📤 Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- IBM Watson Chatbot -->
+                <div class="col-md-6">
+                  <div class="card border-info">
+                    <div class="card-header bg-info text-white">
+                      <h5>🔷 IBM Watson</h5>
+                    </div>
+                    <div class="card-body">
+                      <div
+                        class="chat-container"
+                        id="watson-chat"
+                        style="
+                          height: 400px;
+                          overflow-y: auto;
+                          border: 1px solid #ddd;
+                          padding: 15px;
+                          background-color: #f8f9fa;
+                          border-radius: 8px;
+                        "
+                      >
+                        <div class="chat-message assistant-message mb-3">
+                          <div class="d-flex mb-2">
+                            <div class="badge bg-info me-2">Watson</div>
+                            <div class="flex-grow-1">
+                              <div
+                                class="bg-light p-2 rounded"
+                                style="box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1)"
+                              >
+                                Greetings! I'm IBM Watson. I'm ready to discuss
+                                DAVOTS and enterprise AI explainability.
+                              </div>
+                              <small class="text-muted">Just now</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="input-group mt-3">
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="watson-input"
+                          placeholder="Ask Watson about DAVOTS..."
+                        />
+                        <button
+                          class="btn btn-info"
+                          onclick="sendMessageToWatson()"
+                        >
+                          📤 Send
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .chat-message {
+        animation: fadeIn 0.3s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .chat-container {
+        font-size: 0.9rem;
+      }
+
+      .chat-container .badge {
+        font-size: 0.75rem;
+        min-width: 60px;
+        text-align: center;
+      }
+
+      .chat-message .bg-light,
+      .chat-message .bg-primary {
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      .chat-message.user-message .bg-primary {
+        margin-left: auto;
+      }
+
+      .input-group button {
+        white-space: nowrap;
+      }
+    </style>
   </body>
 </html>

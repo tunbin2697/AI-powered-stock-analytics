@@ -9,9 +9,17 @@ def create_app():
     app = Flask(__name__, static_folder='static', template_folder='templates')
     CORS(app)
     
+    # Register blueprints
     app.register_blueprint(crawl_bp)
     app.register_blueprint(process_bp)
     app.register_blueprint(xai_bp)
+    
+    # Home route
+    @app.route('/')
+    def index():
+        """Render the main data pipeline interface"""
+        return render_template('index.html')
+
     
     app.config.from_object(settings.Config)
     

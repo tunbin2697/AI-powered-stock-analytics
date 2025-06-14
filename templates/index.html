@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TGNN++ Financial Data Pipeline</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <!-- DataTables CSS -->
+    <link
+      href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      .pipeline-step {
+        border: 2px solid #dee2e6;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+      }
+
+      .pipeline-step.active {
+        border-color: #0d6efd;
+        box-shadow: 0 0 15px rgba(13, 110, 253, 0.3);
+      }
+
+      .pipeline-step.completed {
+        border-color: #198754;
+        background-color: #f8fff9;
+      }
+
+      .pipeline-step.error {
+        border-color: #dc3545;
+        background-color: #fff8f8;
+      }
+
+      .status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+      }
+
+      .data-table-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+      }
+
+      .loading-spinner {
+        display: none;
+      }
+
+      .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 60px 0;
+        margin-bottom: 40px;
+      }
+
+      .step-number {
+        background: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 10px;
+      }
+
+      .nav-button {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Hero Section -->
+    <div class="hero-section">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-lg-8">
+            <h1 class="display-4 fw-bold mb-3">
+              <i class="fas fa-chart-line me-3"></i>
+              TGNN++ Financial Data Pipeline
+            </h1>
+            <p class="lead mb-4">
+              Complete data crawling, processing, and analysis pipeline for
+              financial time series prediction using Temporal Graph Neural
+              Networks with explainable AI capabilities.
+            </p>
+            <div class="d-flex gap-3">
+              <span class="badge bg-light text-dark fs-6">
+                <i class="fas fa-database me-1"></i> Multi-Modal Data
+              </span>
+              <span class="badge bg-light text-dark fs-6">
+                <i class="fas fa-brain me-1"></i> TGNN++ Architecture
+              </span>
+              <span class="badge bg-light text-dark fs-6">
+                <i class="fas fa-eye me-1"></i> Explainable AI
+              </span>
+            </div>
+          </div>
+          <div class="col-lg-4 text-center">
+            <i class="fas fa-robot fa-8x opacity-75"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- Control Panel -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="fas fa-sliders-h me-2"></i>
+                Pipeline Control Panel
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Stock Symbol</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="ticker"
+                    value="AAPL"
+                    placeholder="e.g., AAPL, MSFT"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Start Date</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="start-date"
+                    value="2020-01-01"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">End Date</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="end-date"
+                    value="2025-01-01"
+                  />
+                </div>
+              </div>
+              <div class="mt-3">
+                <button
+                  class="btn btn-success me-2"
+                  onclick="runFullPipeline()"
+                >
+                  <i class="fas fa-play me-1"></i> Run Full Pipeline
+                </button>
+                <button
+                  class="btn btn-outline-secondary"
+                  onclick="resetPipeline()"
+                >
+                  <i class="fas fa-refresh me-1"></i> Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Data Crawling -->
+      <div class="pipeline-step" id="step-crawling">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4>
+            <span class="step-number">1</span>
+            <i class="fas fa-download me-2"></i>
+            Data Crawling
+          </h4>
+          <div>
+            <span class="badge status-badge bg-secondary" id="crawl-status"
+              >Pending</span
+            >
+            <div class="loading-spinner" id="crawl-spinner">
+              <div
+                class="spinner-border spinner-border-sm text-primary"
+                role="status"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted mb-3">
+          Collecting data from Yahoo Finance, FRED Economic Data, and News API
+        </p>        <div class="row">
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-primary w-100 mb-2"
+              onclick="crawlYahooFinance()"
+              id="btn-crawl-yf"
+            >
+              <i class="fab fa-yahoo me-1"></i> Yahoo Finance
+            </button>
+            <div id="yf-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-info w-100 mb-2"
+              onclick="crawlFRED()"
+              id="btn-crawl-fred"
+            >
+              <i class="fas fa-university me-1"></i> FRED Data
+            </button>
+            <div id="fred-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-warning w-100 mb-2"
+              onclick="crawlNews()"
+              id="btn-crawl-news"
+            >
+              <i class="fas fa-newspaper me-1"></i> News API
+            </button>
+            <div id="news-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Data Processing -->
+      <div class="pipeline-step" id="step-processing">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4>
+            <span class="step-number">2</span>
+            <i class="fas fa-cogs me-2"></i>
+            Data Processing
+          </h4>
+          <div>
+            <span class="badge status-badge bg-secondary" id="process-status"
+              >Pending</span
+            >
+            <div class="loading-spinner" id="process-spinner">
+              <div
+                class="spinner-border spinner-border-sm text-info"
+                role="status"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted mb-3">
+          Processing and cleaning raw data, creating features and embeddings
+        </p>        <div class="row">
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-primary w-100 mb-2"
+              onclick="processYahooFinance()"
+              id="btn-process-yf"
+            >
+              <i class="fas fa-chart-candlestick me-1"></i> Process Price Data
+            </button>
+            <div id="yf-process-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-info w-100 mb-2"
+              onclick="processFRED()"
+              id="btn-process-fred"
+            >
+              <i class="fas fa-calculator me-1"></i> Process Macro Data
+            </button>
+            <div id="fred-process-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+          <div class="col-md-4">
+            <button
+              class="btn btn-outline-warning w-100 mb-2"
+              onclick="processNews()"
+              id="btn-process-news"
+            >
+              <i class="fas fa-brain me-1"></i> Process News Data
+            </button>
+            <div id="news-process-result" class="small mt-2" style="min-height: 50px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Data Integration -->
+      <div class="pipeline-step" id="step-integration">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4>
+            <span class="step-number">3</span>
+            <i class="fas fa-puzzle-piece me-2"></i>
+            Data Integration
+          </h4>
+          <div>
+            <span class="badge status-badge bg-secondary" id="integrate-status"
+              >Pending</span
+            >
+            <div class="loading-spinner" id="integrate-spinner">
+              <div
+                class="spinner-border spinner-border-sm text-success"
+                role="status"
+              ></div>
+            </div>
+          </div>
+        </div>
+        <p class="text-muted mb-3">
+          Integrating multi-modal data into unified dataset for model training
+        </p>        <button class="btn btn-success mb-3" onclick="integrateData()" id="integrate-btn">
+          <i class="fas fa-link me-1"></i> Integrate All Data
+        </button>
+
+        <!-- Data Preview Table -->
+        <div
+          class="data-table-container"
+          id="integrated-data-container"
+          style="display: none"
+        >
+          <table
+            class="table table-striped table-sm"
+            id="integrated-data-table"
+          >
+            <thead class="table-dark">
+              <tr id="table-header"></tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+
+        <div id="integration-summary" class="mt-3"></div>
+      </div>
+
+      <!-- Pipeline Status Summary -->
+      <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0">
+            <i class="fas fa-clipboard-list me-2"></i>
+            Pipeline Status Summary
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row text-center">
+            <div class="col-md-3">
+              <div class="border rounded p-3">
+                <i class="fas fa-download fa-2x text-primary mb-2"></i>
+                <h6>Data Sources</h6>
+                <span id="sources-count" class="badge bg-primary">0/3</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="border rounded p-3">
+                <i class="fas fa-cogs fa-2x text-info mb-2"></i>
+                <h6>Processing</h6>
+                <span id="processing-count" class="badge bg-info">0/3</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="border rounded p-3">
+                <i class="fas fa-database fa-2x text-success mb-2"></i>
+                <h6>Integration</h6>
+                <span id="integration-count" class="badge bg-success">0/1</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="border rounded p-3">
+                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                <h6>Total Features</h6>
+                <span id="features-count" class="badge bg-warning text-dark"
+                  >0</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>    <!-- Navigation Button -->
+    <button
+      class="btn btn-lg btn-primary nav-button"
+      onclick="goToXAIDashboard()"
+      id="nav-to-xai"
+    >
+      <i class="fas fa-brain me-2"></i>
+      Go to XAI Dashboard
+      <i class="fas fa-arrow-right ms-2"></i>
+    </button>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+      let pipelineState = {
+        crawling: { yf: false, fred: false, news: false },
+        processing: { yf: false, fred: false, news: false },
+        integration: false,
+      };
+
+      // Utility functions
+      function showSpinner(spinnerId) {
+        document.getElementById(spinnerId).style.display = "inline-block";
+      }
+
+      function hideSpinner(spinnerId) {
+        document.getElementById(spinnerId).style.display = "none";
+      }
+
+      function updateStatus(elementId, status, className) {
+        const element = document.getElementById(elementId);
+        element.textContent = status;
+        element.className = `badge status-badge ${className}`;
+      }
+
+      function updatePipelineStep(stepId, status) {
+        const step = document.getElementById(stepId);
+        step.classList.remove("active", "completed", "error");
+        if (status === "active") {
+          step.classList.add("active");
+        } else if (status === "completed") {
+          step.classList.add("completed");
+        } else if (status === "error") {
+          step.classList.add("error");
+        }
+      }
+
+      function updateCounters() {
+        const crawlCount = Object.values(pipelineState.crawling).filter(
+          Boolean
+        ).length;
+        const processCount = Object.values(pipelineState.processing).filter(
+          Boolean
+        ).length;
+        const integrateCount = pipelineState.integration ? 1 : 0;
+
+        document.getElementById(
+          "sources-count"
+        ).textContent = `${crawlCount}/3`;
+        document.getElementById(
+          "processing-count"
+        ).textContent = `${processCount}/3`;
+        document.getElementById(
+          "integration-count"
+        ).textContent = `${integrateCount}/1`;
+
+        // Show navigation button when pipeline is complete
+        if (crawlCount === 3 && processCount === 3 && integrateCount === 1) {
+          document.getElementById("nav-to-xai").style.display = "block";
+        }
+      }
+
+      // Data Crawling Functions
+      async function crawlYahooFinance() {
+        const ticker = document.getElementById("ticker").value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+
+        showSpinner("crawl-spinner");
+        updateStatus("crawl-status", "Crawling YF...", "bg-warning");
+        updatePipelineStep("step-crawling", "active");
+
+        try {
+          const response = await fetch(
+            `/lab2/crawl/yf?ticker=${ticker}&start=${startDate}&end=${endDate}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "yf-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.crawling.yf = true;
+          } else {
+            document.getElementById(
+              "yf-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "yf-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("crawl-spinner");
+        checkCrawlingComplete();
+      }
+
+      async function crawlFRED() {
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+
+        showSpinner("crawl-spinner");
+        updateStatus("crawl-status", "Crawling FRED...", "bg-warning");
+
+        try {
+          const response = await fetch(
+            `/lab2/crawl/fred?start=${startDate}&end=${endDate}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "fred-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.crawling.fred = true;
+          } else {
+            document.getElementById(
+              "fred-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "fred-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("crawl-spinner");
+        checkCrawlingComplete();
+      }
+
+      async function crawlNews() {
+        const ticker = document.getElementById("ticker").value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+
+        showSpinner("crawl-spinner");
+        updateStatus("crawl-status", "Crawling News...", "bg-warning");
+
+        try {
+          const response = await fetch(
+            `/lab2/crawl/newsapi?ticker=${ticker}&start=${startDate}&end=${endDate}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "news-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.crawling.news = true;
+          } else {
+            document.getElementById(
+              "news-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "news-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("crawl-spinner");
+        checkCrawlingComplete();
+      }
+
+      function checkCrawlingComplete() {
+        const completed = Object.values(pipelineState.crawling).every(Boolean);
+        if (completed) {
+          updateStatus("crawl-status", "Completed", "bg-success");
+          updatePipelineStep("step-crawling", "completed");
+        }
+        updateCounters();
+      }
+
+      // Data Processing Functions
+      async function processYahooFinance() {
+        const ticker = document.getElementById("ticker").value;
+
+        showSpinner("process-spinner");
+        updateStatus("process-status", "Processing...", "bg-warning");
+        updatePipelineStep("step-processing", "active");
+
+        try {
+          const response = await fetch(`/lab2/process/yf?ticker=${ticker}`);
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "yf-process-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.processing.yf = true;
+          } else {
+            document.getElementById(
+              "yf-process-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "yf-process-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("process-spinner");
+        checkProcessingComplete();
+      }
+
+      async function processFRED() {
+        showSpinner("process-spinner");
+        updateStatus("process-status", "Processing...", "bg-warning");
+
+        try {
+          const response = await fetch("/lab2/process/fred");
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "fred-process-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.processing.fred = true;
+          } else {
+            document.getElementById(
+              "fred-process-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "fred-process-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("process-spinner");
+        checkProcessingComplete();
+      }
+
+      async function processNews() {
+        const ticker = document.getElementById("ticker").value;
+
+        showSpinner("process-spinner");
+        updateStatus("process-status", "Processing...", "bg-warning");
+
+        try {
+          const response = await fetch(
+            `/lab2/process/newsapi?ticker=${ticker}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            document.getElementById(
+              "news-process-result"
+            ).innerHTML = `<i class="fas fa-check text-success"></i> ${data.message}`;
+            pipelineState.processing.news = true;
+          } else {
+            document.getElementById(
+              "news-process-result"
+            ).innerHTML = `<i class="fas fa-times text-danger"></i> ${data.error}`;
+          }
+        } catch (error) {
+          document.getElementById(
+            "news-process-result"
+          ).innerHTML = `<i class="fas fa-times text-danger"></i> Error: ${error.message}`;
+        }
+
+        hideSpinner("process-spinner");
+        checkProcessingComplete();
+      }
+
+      function checkProcessingComplete() {
+        const completed = Object.values(pipelineState.processing).every(
+          Boolean
+        );
+        if (completed) {
+          updateStatus("process-status", "Completed", "bg-success");
+          updatePipelineStep("step-processing", "completed");
+        }
+        updateCounters();
+      }
+
+      // Data Integration Function
+      async function integrateData() {
+        const ticker = document.getElementById("ticker").value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+
+        showSpinner("integrate-spinner");
+        updateStatus("integrate-status", "Integrating...", "bg-warning");
+        updatePipelineStep("step-integration", "active");
+
+        try {
+          const response = await fetch(
+            `/lab2/xai/integrate_data?ticker=${ticker}&start=${startDate}&end=${endDate}`
+          );
+          const data = await response.json();
+
+          if (data.status === "success") {
+            updateStatus("integrate-status", "Completed", "bg-success");
+            updatePipelineStep("step-integration", "completed");
+            pipelineState.integration = true;
+
+            // Display data summary
+            document.getElementById("integration-summary").innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle me-2"></i>Integration Successful!</h6>
+                            <p class="mb-1"><strong>Total Records:</strong> ${data.total_records}</p>
+                            <p class="mb-1"><strong>Total Features:</strong> ${data.total_features}</p>
+                            <p class="mb-0"><strong>Date Range:</strong> ${data.date_range.start} to ${data.date_range.end}</p>
+                        </div>
+                    `;
+
+            // Update features counter
+            document.getElementById("features-count").textContent =
+              data.total_features;
+
+            // Display sample data in table
+            displaySampleData(data.sample_data, data.feature_names);
+          } else {
+            updateStatus("integrate-status", "Error", "bg-danger");
+            updatePipelineStep("step-integration", "error");
+            document.getElementById("integration-summary").innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${data.error}
+                        </div>
+                    `;
+          }
+        } catch (error) {
+          updateStatus("integrate-status", "Error", "bg-danger");
+          updatePipelineStep("step-integration", "error");
+          document.getElementById("integration-summary").innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error: ${error.message}
+                    </div>
+                `;
+        }
+
+        hideSpinner("integrate-spinner");
+        updateCounters();
+      }
+
+      function displaySampleData(sampleData, featureNames) {
+        if (!sampleData || sampleData.length === 0) return;
+
+        // Show table container
+        document.getElementById("integrated-data-container").style.display =
+          "block";
+
+        // Create table header
+        const headerRow = document.getElementById("table-header");
+        headerRow.innerHTML = "";
+
+        // Show first 10 columns + last 5 columns to give a good overview
+        const displayColumns = [
+          ...featureNames.slice(0, 10),
+          "...",
+          ...featureNames.slice(-5),
+        ];
+
+        displayColumns.forEach((colName) => {
+          const th = document.createElement("th");
+          th.textContent = colName;
+          th.style.minWidth = "120px";
+          headerRow.appendChild(th);
+        });
+
+        // Create table body with sample data
+        const tbody = document.getElementById("table-body");
+        tbody.innerHTML = "";
+
+        sampleData.slice(0, 10).forEach((row) => {
+          // Show first 10 rows
+          const tr = document.createElement("tr");
+
+          // Show corresponding data for displayed columns
+          const displayData = [
+            ...Object.values(row).slice(0, 10),
+            "...",
+            ...Object.values(row).slice(-5),
+          ];
+
+          displayData.forEach((value) => {
+            const td = document.createElement("td");
+            if (value === "...") {
+              td.textContent = "...";
+              td.className = "text-center text-muted";
+            } else {
+              td.textContent =
+                typeof value === "number" ? value.toFixed(6) : value;
+            }
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Full Pipeline Runner
+      async function runFullPipeline() {
+        resetPipeline();
+
+        // Step 1: Crawling
+        await crawlYahooFinance();
+        await crawlFRED();
+        await crawlNews();
+
+        // Wait a bit for crawling to complete
+        setTimeout(async () => {
+          // Step 2: Processing
+          await processYahooFinance();
+          await processFRED();
+          await processNews();
+
+          // Wait a bit for processing to complete
+          setTimeout(async () => {
+            // Step 3: Integration
+            await integrateData();
+          }, 2000);
+        }, 2000);
+      }
+
+      function resetPipeline() {
+        pipelineState = {
+          crawling: { yf: false, fred: false, news: false },
+          processing: { yf: false, fred: false, news: false },
+          integration: false,
+        };
+
+        // Reset all status badges
+        updateStatus("crawl-status", "Pending", "bg-secondary");
+        updateStatus("process-status", "Pending", "bg-secondary");
+        updateStatus("integrate-status", "Pending", "bg-secondary");
+
+        // Reset pipeline steps
+        updatePipelineStep("step-crawling", "");
+        updatePipelineStep("step-processing", "");
+        updatePipelineStep("step-integration", "");
+
+        // Clear result messages
+        [
+          "yf-result",
+          "fred-result",
+          "news-result",
+          "yf-process-result",
+          "fred-process-result",
+          "news-process-result",
+          "integration-summary",
+        ].forEach((id) => {
+          document.getElementById(id).innerHTML = "";
+        });
+
+        // Hide data table
+        document.getElementById("integrated-data-container").style.display =
+          "none";
+
+        // Hide navigation button
+        document.getElementById("nav-to-xai").style.display = "none";
+
+        updateCounters();
+      }    <!-- Main JavaScript -->
+    <script>
+      // Navigation function  
+      function goToXAIDashboard() {
+        window.location.href = '/lab2/xai/dashboard';
+      }
+
+      // Utility functions
+      function showLoading(buttonId, text = 'Loading...') {
+        const btn = document.getElementById(buttonId);
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i> ${text}`;
+      }
+
+      function hideLoading(buttonId, originalText, iconClass) {
+        const btn = document.getElementById(buttonId);
+        btn.disabled = false;
+        btn.innerHTML = `<i class="${iconClass} me-1"></i> ${originalText}`;
+      }
+
+      function showResponse(resultId, response, isSuccess = true) {
+        const resultDiv = document.getElementById(resultId);
+        const icon = isSuccess ? 'fas fa-check text-success' : 'fas fa-times text-danger';
+        const alertClass = isSuccess ? 'alert-success' : 'alert-danger';
+        
+        resultDiv.innerHTML = `
+          <div class="alert ${alertClass} p-2 mt-2">
+            <i class="${icon} me-1"></i>
+            <small>${response}</small>
+          </div>
+        `;
+      }
+
+      // Data Crawling Functions
+      async function crawlYahooFinance() {
+        const ticker = document.getElementById('ticker').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        showLoading('btn-crawl-yf', 'Crawling...');
+
+        try {
+          const response = await fetch(`/lab2/crawl/yf?ticker=${ticker}&start=${startDate}&end=${endDate}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('yf-result', data.message, true);
+          } else {
+            showResponse('yf-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('yf-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-crawl-yf', 'Yahoo Finance', 'fab fa-yahoo');
+      }
+
+      async function crawlFRED() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        showLoading('btn-crawl-fred', 'Crawling...');
+
+        try {
+          const response = await fetch(`/lab2/crawl/fred?start=${startDate}&end=${endDate}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('fred-result', data.message, true);
+          } else {
+            showResponse('fred-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('fred-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-crawl-fred', 'FRED Data', 'fas fa-university');
+      }
+
+      async function crawlNews() {
+        const ticker = document.getElementById('ticker').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        showLoading('btn-crawl-news', 'Crawling...');
+
+        try {
+          const response = await fetch(`/lab2/crawl/newsapi?ticker=${ticker}&start=${startDate}&end=${endDate}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('news-result', data.message, true);
+          } else {
+            showResponse('news-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('news-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-crawl-news', 'News API', 'fas fa-newspaper');
+      }
+
+      // Data Processing Functions
+      async function processYahooFinance() {
+        const ticker = document.getElementById('ticker').value;
+
+        showLoading('btn-process-yf', 'Processing...');
+
+        try {
+          const response = await fetch(`/lab2/process/yf?ticker=${ticker}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('yf-process-result', data.message, true);
+          } else {
+            showResponse('yf-process-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('yf-process-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-process-yf', 'Process Price Data', 'fas fa-chart-candlestick');
+      }
+
+      async function processFRED() {
+        showLoading('btn-process-fred', 'Processing...');
+
+        try {
+          const response = await fetch('/lab2/process/fred');
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('fred-process-result', data.message, true);
+          } else {
+            showResponse('fred-process-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('fred-process-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-process-fred', 'Process Macro Data', 'fas fa-calculator');
+      }
+
+      async function processNews() {
+        const ticker = document.getElementById('ticker').value;
+
+        showLoading('btn-process-news', 'Processing...');
+
+        try {
+          const response = await fetch(`/lab2/process/newsapi?ticker=${ticker}`);
+          const data = await response.json();
+          
+          if (data.status === 'success') {
+            showResponse('news-process-result', data.message, true);
+          } else {
+            showResponse('news-process-result', data.error || 'Unknown error', false);
+          }
+        } catch (error) {
+          showResponse('news-process-result', `Network Error: ${error.message}`, false);
+        }
+
+        hideLoading('btn-process-news', 'Process News Data', 'fas fa-brain');
+      }
+
+      // Data Integration Function  
+      async function integrateData() {
+        const ticker = document.getElementById('ticker').value;
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+
+        const btn = document.getElementById('integrate-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Integrating...';
+
+        try {
+          const response = await fetch(`/lab2/xai/integrate_data?ticker=${ticker}&start=${startDate}&end=${endDate}`);
+          const data = await response.json();
+          
+          const summaryDiv = document.getElementById('integration-summary');
+          
+          if (data.status === 'success') {
+            summaryDiv.innerHTML = `
+              <div class="alert alert-success">
+                <h6><i class="fas fa-check-circle me-2"></i>Integration Successful!</h6>
+                <p class="mb-1"><strong>Total Records:</strong> ${data.total_records}</p>
+                <p class="mb-1"><strong>Total Features:</strong> ${data.total_features}</p>
+                <p class="mb-0"><strong>Date Range:</strong> ${data.date_range.start} to ${data.date_range.end}</p>
+              </div>
+            `;
+            
+            if (data.sample_data && data.sample_data.length > 0) {
+              displaySampleData(data.sample_data, data.feature_names);
+            }
+          } else {
+            summaryDiv.innerHTML = `
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error: ${data.error || 'Unknown error'}
+              </div>
+            `;
+          }
+        } catch (error) {
+          document.getElementById('integration-summary').innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              Network Error: ${error.message}
+            </div>
+          `;
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-link me-1"></i> Integrate All Data';
+      }
+
+      function displaySampleData(sampleData, featureNames) {
+        if (!sampleData || sampleData.length === 0) return;
+
+        document.getElementById('integrated-data-container').style.display = 'block';
+        
+        const headerRow = document.getElementById('table-header');
+        headerRow.innerHTML = '';
+        
+        const displayColumns = [...featureNames.slice(0, 10), '...', ...featureNames.slice(-5)];
+        
+        displayColumns.forEach(colName => {
+          const th = document.createElement('th');
+          th.textContent = colName;
+          th.style.minWidth = '120px';
+          headerRow.appendChild(th);
+        });
+
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        
+        sampleData.slice(0, 10).forEach(row => {
+          const tr = document.createElement('tr');
+          const displayData = [...Object.values(row).slice(0, 10), '...', ...Object.values(row).slice(-5)];
+          
+          displayData.forEach(value => {
+            const td = document.createElement('td');
+            if (value === '...') {
+              td.textContent = '...';
+              td.className = 'text-center text-muted';
+            } else {
+              td.textContent = typeof value === 'number' ? value.toFixed(6) : value;
+            }
+            tr.appendChild(td);
+          });
+          
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Simplified functions for compatibility
+      function runFullPipeline() {
+        alert('Use individual buttons for better control and response visibility.');
+      }
+
+      function resetPipeline() {
+        ['yf-result', 'fred-result', 'news-result', 'yf-process-result', 'fred-process-result', 'news-process-result', 'integration-summary'].forEach(id => {
+          const element = document.getElementById(id);
+          if (element) element.innerHTML = '';
+        });
+        
+        const tableContainer = document.getElementById('integrated-data-container');
+        if (tableContainer) tableContainer.style.display = 'none';
+        
+        alert('All results cleared.');
+      }
+    </script>
+  </body>
+</html>

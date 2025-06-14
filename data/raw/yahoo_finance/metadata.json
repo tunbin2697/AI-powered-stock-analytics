@@ -1,16 +1,16 @@
 {
-    "AAPL_2020-01-01_2025-01-01_1d": {
-        "filepath": "data/raw/yahoo_finance\\AAPL_2020-01-01_2025-01-01_1d.csv",
-        "records_count": 1258,
-        "actual_start": "2020-01-02",
-        "actual_end": "2024-12-31",
-        "downloaded_at": "2025-06-14 02:07:45"
-    },
-    "MSFT_2020-01-01_2025-01-01_1d": {
-        "filepath": "data/raw/yahoo_finance\\MSFT_2020-01-01_2025-01-01_1d.csv",
-        "records_count": 1258,
-        "actual_start": "2020-01-02",
-        "actual_end": "2024-12-31",
-        "downloaded_at": "2025-06-14 02:10:22"
-    }
+  "AAPL_2020-01-01_2025-01-01_1d": {
+    "filepath": "data/raw/yahoo_finance\\AAPL_2020-01-01_2025-01-01_1d.csv",
+    "records_count": 1258,
+    "actual_start": "2020-01-02",
+    "actual_end": "2024-12-31",
+    "downloaded_at": "2025-06-14 02:07:45"
+  },
+  "MSFT_2020-01-01_2025-01-01_1d": {
+    "filepath": "data/raw/yahoo_finance\\MSFT_2020-01-01_2025-01-01_1d.csv",
+    "records_count": 1258,
+    "actual_start": "2020-01-02",
+    "actual_end": "2024-12-31",
+    "downloaded_at": "2025-06-14 02:10:22"
+  }
 }

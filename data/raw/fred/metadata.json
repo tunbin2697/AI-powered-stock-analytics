@@ -33,5 +33,12 @@
         "actual_start": "2020-01-01",
         "actual_end": "2025-01-01",
         "downloaded_at": "2025-06-14 03:18:51"
+    },
+    "GS10_2023-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\GS10_2023-01-01_2025-01-01.csv",
+        "records_count": 25,
+        "actual_start": "2023-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 20:53:01"
     }
 }
