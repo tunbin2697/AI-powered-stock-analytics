@@ -1,0 +1,1100 @@
+﻿I. LAB2 : TỔNG QUAN 7 BƯỚC THỰC HIỆN
+1. Business Understanding & Data Collection
+2. Data Description & Preprocessing
+3. Data Analysis
+4. Data Visualization (Advanced + XAI)
+5. Chatbot Integration (Gemini & so sánh chatbox)
+6. Model Building & Prediction
+7. Application Development (Flask Dashboard + Chatbot)
+Deadline 9/6/2025, nộp báo cáo Latex, code trên nộp google drive mỗi nhóm folder LAB2
+1. BUSINESS UNDERSTANDING & DATA COLLECTION
+1.1. Mục tiêu Bước 1
+* Làm rõ phạm vi: Xây một hệ thống end-to-end cho dự án (Stock/Weather/Healthcare) với:
+1. Multi-modal data (giá, volume, tin tức, social media, macro).
+2. XAI methods (ICFTS, DAVOTS) để giải thích kết quả.
+3. Dashboard Flask hiển thị prediction và các visual XAI.
+4. Chatbot Gemini + Chatbot thứ hai để người dùng tương tác, đặt câu hỏi về dữ liệu, mô hình và giải thích.
+* Output Bước 1:
+1. Báo cáo ngắn (Markdown hoặc Word) mô tả:
+* Dữ liệu cần thu thập (ví dụ: Yahoo Finance, News API, X Platform, FRED).
+* Tần suất thu thập (giả sử "hàng ngày" tức 02:00 AM).
+* Tiêu chuẩn chất lượng (completeness, validity, consistency).
+* Các câu hỏi chính dự định giải đáp (ví dụ: "Yếu tố nào ảnh hưởng nhiều nhất đến giá TSLA?", "Causal link giữa tariff exemptions và giá cổ phiếu?").
+2. Sơ đồ luồng chung (Flowchart) gồm:
+* Nút "Data Sources" → "Preprocessing Pipeline" → "Database" → "Analysis & Visualization" → "Model Training & Prediction" → "Flask Dashboard + Chatbot".
+1.2. Thu thập dữ liệu (Data Collection)
+* Nguồn dữ liệu (tối thiểu 3 nguồn):
+1. Yahoo Finance (qua thư viện yfinance) → lịch sử giá & volume.
+2. News API (ví dụ: NewsAPI.org) → tin tức (article title, description) phục vụ text embedding.
+3. X Platform (Twitter API) → tweet liên quan đến ticker (sentiment).
+4. (Option) FRED API → chỉ số kinh tế (lãi suất, CPI).
+* Lưu ý:
+1. Mỗi nguồn gắn metadata (Thời gian thu thập, volume bản ghi, schema).
+2. Đặt script Python để tự động tải dữ liệu hàng ngày (theo cấu hình config.yml).
+Output
+* Folder data/raw/source_X/ chứa file CSV:
+data/
+└─ raw/
+   ├─ yahoo_finance/
+   │    ├─ raw_2025-06-01.csv  
+   │    └─ raw_2025-06-02.csv
+   ├─ news_api/
+   │    ├─ raw_2025-06-01.json  
+   │    └─ raw_2025-06-02.json
+   ├─ x_platform/
+   │    ├─ raw_2025-06-01.json  
+   │    └─ raw_2025-06-02.json
+   └─ fred/
+        ├─ raw_2025-06-01.csv  
+        └─ raw_2025-06-02.csv
+* Tập con "metadata.txt" ghi sơ bộ schema & record count cho mỗi file.
+
+2. DATA DESCRIPTION & PREPROCESSING
+2.1. Mục tiêu Bước 2
+* Mô tả dữ liệu trước và sau khi xử lý.
+* Tiền xử lý multi-modal:
+1. Price & Volume: z-score normalization.
+2. Text (News & Tweet): FinBERT embedding (768-dim).
+3. Macro (FRED): Min-Max normalization.
+4. Missing value: KNN imputation (k = 5).
+* Output Bước 2:
+1. Notebook lab2_step2_preprocessing.ipynb (mã Python cụ thể):
+* Thống kê missing & invalid.
+* Demo FinBERT embedding cho news & tweet.
+* Lưu file data/processed/multi_modal_2025-06-02.pkl ( có key: price_df, embedding_df, macro_df ).
+2. Folder data/processed/daily/ chứa:
+* processed_price_2025-06-02.csv,
+* processed_news_emb_2025-06-02.npy,
+* processed_tweet_emb_2025-06-02.npy,
+* processed_macro_2025-06-02.csv.
+
+3. DATA ANALYSIS
+3.1. Mục tiêu Bước 3
+* Phân tích sơ bộ multi-modal:
+1. Correlation matrix giữa các stock (Pearson).
+2. Time-series decomposition (trend, seasonal, residual) cho một asset mẫu (ví dụ TSLA).
+3. Sentiment analysis:
+* Tính tần suất classification (positive/neutral/negative) mỗi ngày.
+* Rolling average sentiment (7-day, 14-day) → correlation với returns.
+4. Network Analysis: tạo dynamic graph (Graph tại mỗi ngày) dựa trên correlation > 0.5.
+* Output Bước 3:
+1. Notebook lab2_step3_analysis.ipynb:
+* Hiển thị correlation heatmap (stocks).
+* Biểu đồ decomposition TSLA (mẫu).
+* Bar chart sentiment distribution per day.
+* Vẽ 2 snapshot dynamic graph (ngày Volatility cao vs. Volatility thấp).
+
+4. DATA VISUALIZATION (ADVANCED + XAI)
+4.1. Visualization Cơ Bản (≥ 5 biểu đồ)
+Trong Lab 1 dùng: Waffle, Area, Histogram, Bar, Pie, Scatter, Word Cloud, Choropleth. Lab 2 yêu cầu:
+1. Line Plot (Plotly interactive):
+o Price vs. Volume vs. Sentiment cùng chart (secondary y-axis).
+2. Area Plot + Waffle Chart:
+o Tỷ lệ volume theo sector/industry (nếu Healthcare: ratio bệnh...).
+3. Histogram + Box Plot:
+o Distribution of returns (positive vs. negative).
+o Box plot so sánh returns cho TSLA, AAPL, JPM.
+4. Scatter Plot:
+o Price vs. Sentiment Rolling Avg, trendline + confidence interval.
+5. Word Cloud:
+o Top-50 từ xuất hiện nhiều nhất trong news headlines, màu sắc tương ứng sentiment.
+6. Choropleth Map (chỉ với Weather hoặc Healthcare có data geo):
+o Mức độ nhiệt độ hoặc chỉ số sức khỏe theo vùng/state.
+4.2. Visualization XAI (DAVOTS & ICFTS)
+4.2.1. DAVOTS Heatmap
+* Cách thực hiện:
+1. Dùng Captum (PyTorch) hoặc tự viết hàm Integrated Gradients / SmoothGrad trên multi-modal model.
+2. Cho từng timestep t (ví dụ t = 𝑡₀−30 → 𝑡₀), tính attribution score per feature (Price, Volume, Sentiment, Macro).
+3. Kết quả tạo ma trận A ∈ [T × F], F = 4-5.
+4. Vẽ heatmap (Plotly) trục X = timestep, trục Y = features, color scale = normalized importance.
+* Output:
+1. Notebook lab2_step4_xai_visualization.ipynb lệnh tính attribution & lưu heatmap:
+python
+CopyEdit
+from captum.attr import IntegratedGradients  
+# ... chuẩn bị input_tensor (T × F), model, v.v.  
+ig = IntegratedGradients(model)  
+attributions = ig.attribute(input_tensor, target=target_asset)  # shape (T,F)  
+# Vẽ heatmap
+import plotly.express as px
+fig = px.imshow(attributions.detach().cpu().numpy().T,  
+                x=list(range(T)), y=feature_names,  
+                labels=dict(x="Time Step", y="Feature"),  
+                color_continuous_scale="Viridis")
+fig.update_layout(title="DAVOTS Heatmap - Feature Importance Over Time")
+fig.show()
+2. Xuất file ảnh hoặc embed interactive HTML.
+3. Giải thích: Mô tả ý nghĩa color scale, ví dụ "tại timestep t = 7, Sentiment chiếm ~35% importance, Price ~22.6%, ...".
+4.2.2. ICFTS Causal Plot
+* Cách thực hiện:
+1. Sử dụng pc causal discovery (package causal-learn hoặc pgmpy).
+2. Chọn biến "x" (ví dụ Sentiment) và output "y" (Price).
+3. Thực hiện do-calculus: tạo bộ data counterfactual (Sentiment ± 5%, ±10%).
+4. Dự đoán ŷ_do for each scenario (gọi model với input đã thay đổi).
+5. Tính Δy = ŷ_do − ŷ_baseline.
+6. Vẽ causal plot (Matplotlib hoặc Plotly) trục X = time steps, trục Y = Δy(t).
+* Output:
+1. Trong notebook trên, lưu biểu đồ:
+python
+CopyEdit
+fig = px.line(x=list(range(len(delta_y))), y=delta_y,  
+              labels=dict(x="Time Step", y="Δ Price (USD)"),  
+              title="ICFTS Causal Plot - Sentiment → Price")
+fig.add_scatter(x=[7], y=[delta_y[7]], mode="markers+text",  
+                text=["Event: Tariff Exempt"], textposition="top center")
+fig.show()
+2. Giải thích: "Nếu Sentiment tăng 5% tại t = 7, Price dự kiến tăng +2.5 USD so với baseline, tương ứng với sự kiện exempt tariff ngày 11/04/2025."
+4.3. Tổng hợp Output Visual
+1. Dashboard Demo (nháp) hiển thị tất cả visual:
+o Price/Vol/Sentiment line chart (Plotly).
+o DAVOTS heatmap.
+o ICFTS causal plot.
+o Biểu đồ distribution (Histogram, Box).
+o Word Cloud.
+2. Folder lưu ảnh:
+CopyEdit
+visuals/
+├─ line_price_sentiment.html  
+├─ davots_heatmap.html  
+├─ icfts_causal_plot.html  
+├─ histogram_returns.png  
+└─ wordcloud_news.png
+
+5. CHATBOT INTEGRATION (GEMINI & CHATBOT THỨ HAI)
+5.1. Mục tiêu Bước 5
+* Triển khai song song Gemini Chatbot và Chatbot thứ hai (Ví dụ IBM Watson Assistant hoặc ChatGPT API) để so sánh khả năng:
+1. Trả lời về quy trình tiền xử lý, mô tả dữ liệu (ví dụ "Triển khai FinBERT embedding thế nào?").
+2. Giải thích visual XAI (ví dụ "Giải thích DAVOTS heatmap tại timestep 10?").
+3. Causal reasoning (ví dụ "Sentiment tăng 5% → Price thay đổi ra sao?").
+* Output Bước 5:
+1. Code sample tích hợp API Gemini.
+2. Code sample tích hợp API Watson/Rasa/ChatGPT.
+3. Demo web (Flask) hiển thị 2 Chatbot, user có thể chọn "Gemini" hoặc "Alternate" (giao diện radio button).
+4. Bảng 10 câu hỏi mẫu (provided in report) và kết quả trả lời thu được.
+5. Nhận xét so sánh (accuracy, fluency, response time).
+5.2. Hướng dẫn tích hợp Gemini Chatbot
+5.2.1. Chuẩn bị tài khoản & API Key
+* Đăng ký Google Cloud Project → Kích hoạt API "Gemini Chat" (nếu có).
+* Tạo Service Account và tải file JSON credentials gemini_credentials.json.
+5.2.2. Cài đặt thư viện (Python)
+pip install google-cloud-gemini
+5.2.3. Mã ví dụ gọi Gemini
+# file: chatbots/gemini_client.py
+import os
+from google.cloud import gemini_v1
+
+def init_gemini_client(cred_path="gemini_credentials.json"):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_path
+    client = gemini_v1.chat.ChatServiceClient()
+    return client
+
+def ask_gemini(question, model="gemini-pro-1.0"):
+    client = init_gemini_client()
+    chat_req = gemini_v1.ChatCompletionRequest(
+        model=model,
+        prompts=[gemini_v1.ChatPromptContent(text=question)]
+    )
+    response = client.chat_completion(request=chat_req)
+    return response.completion
+5.2.4. Ví dụ gọi trong Flask
+# trong app.py (Flask)
+from flask import Flask, render_template, request, jsonify
+from chatbots.gemini_client import ask_gemini
+
+app = Flask(__name__)
+
+@app.route("/ask_gemini", methods=["POST"])
+def ask_gemini_route():
+    data = request.json
+    question = data.get("question", "")
+    answer = ask_gemini(question)
+    return jsonify({"answer": answer})
+
+# Phần HTML:  
+# <input type="text" id="gemini_input" placeholder="Ask Gemini...">  
+# <button onclick="sendGemini()">Send</button>  
+# <div id="gemini_output"></div>
+
+# JS (embedded trong template):  
+// function sendGemini() {
+//   const q = document.getElementById("gemini_input").value;
+//   fetch("/ask_gemini", {
+//     method: "POST",
+//     headers: {'Content-Type': 'application/json'},
+//     body: JSON.stringify({question: q})
+//   })
+//   .then(res => res.json())
+//   .then(data => {
+//     document.getElementById("gemini_output").innerText = data.answer;
+//   });
+// }
+5.3. Hướng dẫn tích hợp Chatbot thứ hai (Ví dụ: IBM Watson Assistant)
+5.3.1. Chuẩn bị Watson Assistant
+1. Đăng ký IBM Cloud → Tạo instance Watson Assistant → Lưu API Key & URL.
+2. Xây dialog flow (intents, entities) tập trung trả lời:
+o Câu hỏi về dataset (ví dụ "Khi nào thì dùng KNN imputation?")
+o Câu hỏi về XAI (ví dụ "Dòng nào trong DAVOTS heatmap thể hiện gì?")
+o Câu hỏi technical (ví dụ "Làm sao để tính dynamic graph?").
+3. Tạo assistant_credentials.json chứa { "apikey": "...", "url": "..." , "assistant_id": "..." }.
+5.3.2. Cài đặt thư viện
+pip install ibm_watson
+5.3.3. Mã ví dụ gọi Watson
+# file: chatbots/watson_client.py
+import json
+from ibm_watson import AssistantV2
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+def init_watson():
+    creds = json.load(open("assistant_credentials.json"))
+    auth = IAMAuthenticator(creds["apikey"])
+    assistant = AssistantV2(
+        version="2025-06-01",
+        authenticator=auth
+    )
+    assistant.set_service_url(creds["url"])
+    return assistant, creds["assistant_id"]
+
+def ask_watson(question):
+    assistant, assistant_id = init_watson()
+    session = assistant.create_session(assistant_id=assistant_id).get_result()["session_id"]
+    res = assistant.message(
+        assistant_id=assistant_id,
+        session_id=session,
+        input={"message_type":"text","text":question}
+    ).get_result()
+    # Lấy response text đầu tiên
+    if res["output"]["generic"]:
+        return res["output"]["generic"][0]["text"]
+    return "No response"
+5.3.4. Ví dụ gọi cùng Flask
+# Trong app.py tiếp tục:
+from chatbots.watson_client import ask_watson
+
+@app.route("/ask_watson", methods=["POST"])
+def ask_watson_route():
+    data = request.json
+    question = data.get("question", "")
+    answer = ask_watson(question)
+    return jsonify({"answer": answer})
+5.4. Giao diện Chatbot Trong Flask Dashboard
+* Template HTML (ví dụ templates/index.html):
+html
+CopyEdit
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lab2 Dashboard with Chatbots</title>
+  <script src="https://cdn.plot.ly/plotly-2.0.0.min.js"></script>
+</head>
+<body>
+  <h1>Lab 2 - Dashboard</h1>
+  <!-- Đây sẽ là div cho các biểu đồ Plotly -->
+  <div id="price_chart" style="width:600px;height:400px;"></div>
+  <div id="davots_heatmap" style="width:600px;height:400px;"></div>
+  <div id="icfts_plot" style="width:600px;height:400px;"></div>
+
+  <hr>
+
+  <h2>Chat With Models</h2>
+  <form id="chat_form">
+    <label><input type="radio" name="bot" value="gemini" checked> Gemini</label>
+    <label><input type="radio" name="bot" value="watson"> Watson</label><br>
+    <input type="text" id="question_input" size="80" placeholder="Type your question...">
+    <button type="button" onclick="sendQuestion()">Ask</button>
+  </form>
+  <div id="chat_response" style="white-space: pre-wrap; border: 1px solid #ccc; padding:10px; margin-top:10px;"></div>
+
+  <script>
+    function sendQuestion() {
+      const question = document.getElementById("question_input").value;
+      const bot = document.querySelector('input[name="bot"]:checked').value;
+      const endpoint = (bot === "gemini") ? "/ask_gemini" : "/ask_watson";
+      fetch(endpoint, {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: question})
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("chat_response").innerText = data.answer;
+      });
+    }
+
+    // Hàm khởi tạo Plotly graphs (sẽ được load data via Flask route hoặc embed)
+    // Ví dụ:
+    document.addEventListener("DOMContentLoaded", function(){
+      // Load JSON data cho biểu đồ, giả định Flask trả về data qua /get_visuals endpoint
+      fetch("/get_visuals")
+      .then(res => res.json())
+      .then(data => {
+        Plotly.newPlot("price_chart", data.price_data.data, data.price_data.layout);
+        Plotly.newPlot("davots_heatmap", data.davots_data.data, data.davots_data.layout);
+        Plotly.newPlot("icfts_plot", data.icfts_data.data, data.icfts_data.layout);
+      });
+    });
+  </script>
+</body>
+</html>
+* Flask Route cho "/get_visuals":
+# Trong app.py
+import json
+import pandas as pd
+from flask import jsonify
+
+@app.route("/get_visuals")
+def get_visuals():
+    # 1) Price chart: đọc từ file JSON hoặc CSV đã chuẩn bị
+    price_df = pd.read_csv("data/processed/latest/latest_source_A.csv")
+    # Giả lập data cho Plotly:
+    price_data = {
+        "data": [
+            {"x": price_df["Date"].tolist(), "y": price_df["ClosePrice"].tolist(),
+             "type": "scatter", "name": "ClosePrice"},
+            # Có thể thêm Volume & Sentiment...
+        ],
+        "layout": {"title": "Price Time-Series (Latest)"}
+    }
+    # 2) DAVOTS heatmap (đã lưu sẵn JSON hoặc có thể load numpy rồi convert)
+    davots_matrix =  ...  # load từ file npy hoặc JSON
+    davots_data = {
+        "data": [
+            {"z": davots_matrix, "x": feature_names, "y": list(range(len(davots_matrix))),
+             "type": "heatmap", "colorscale": "Viridis"}
+        ],
+        "layout": {"title": "DAVOTS Heatmap (Latest)"}
+    }
+    # 3) ICFTS plot: tương tự
+    icfts_data = {
+        "data": [
+            {"x": list(range(len(delta_y))), "y": delta_y, "type": "line", "name": "Δ Price"}
+        ],
+        "layout": {"title": "ICFTS Causal Plot (Latest)"}
+    }
+    return jsonify({
+        "price_data": price_data,
+        "davots_data": davots_data,
+        "icfts_data": icfts_data
+    })
+
+6. MODEL BUILDING & PREDICTION
+6.1. Mục tiêu Bước 6
+* Triển khai model T-GNN++ Transformer (tham khảo PDF ), kết hợp:
+1. Dynamic graph pruning (Pearson ≥ 0.5).
+2. Multi-modal embedding (1D CNN cho price, FinBERT cho text, MLP cho macro).
+3. T-GNN module (GAT + adaptive temporal attention).
+4. Transformer module (8 heads, 4 layers).
+5. Fusion layer & Prediction (linear).
+6. Loss = MSE + 0.1·CausalPenalty (ICFTS).
+* So sánh với baseline:
+1. SARIMAX, Transformer (thuần), T-GNN (không Transformer), TFT (Temporal Fusion Transformer).
+2. XGBoost (features engineered).
+* Đánh giá:
+1. MSE, Directional Accuracy, ECE, Inference Time.
+2. Faithfulness Score (0.87) & Reliability Score (0.92) (giống bài báo).
+3. Ablation study: w/o dynamic graph, w/o adaptive temporal attention, w/o causal penalty, w/o XAI modules.
+4. Per-asset performance (TSLA, AAPL, ...).
+5. Performance across volatility: Low (Jan 2025) vs. High (Apr 2025).
+* Output Bước 6:
+1. Notebook lab2_step6_model.ipynb (hoặc Python scripts):
+* Mã tạo dynamic graph, multi-modal embedding.
+* Định nghĩa T-GNN++ class (PyTorch).
+* Quá trình train/validate/test, lưu model best checkpoint.
+* Tính XAI metrics (Faithfulness, Reliability).
+* Lưu all results (CSV hoặc pickle).
+2. File results/ chứa:
+* performance_summary.csv (MSE, accuracy, ECE mỗi model).
+* ablation_results.csv.
+* per_asset_performance.csv.
+3. Tóm tắt đoạn code training convergence:
+* Lưu số epoch, MSE training/validation.
+
+7. APPLICATION DEVELOPMENT (FLASK DASHBOARD + CHATBOT)
+7.1. Mục tiêu Bước 7
+* Xây dựng Flask Dashboard:
+1. Hiển thị real-time visualization: price, DAVOTS, ICFTS.
+2. Cho phép user tương tác:
+* Chọn asset (dropdown).
+* Chọn forecasting horizon (5 min, 1 hr, 1 day).
+* Chọn chế độ hiển thị XAI (DAVOTS / ICFTS).
+3. Nhúng Chatbot: Gemini & Chatbot thứ hai (Watson/ChatGPT).
+4. Chức năng prediction on-demand:
+* User click "Predict Next" → gọi model phục hồi (model checkpoint) → trả về prediction, overlay lên chart.
+* Output Bước 7:
+1. Folder app/ gồm:
+* app.py (Flask main).
+* templates/index.html, templates/layout.html.
+* static/ chứa CSS, JS (Plotly.js).
+* chatbots/gemini_client.py, chatbots/watson_client.py.
+* model/ chứa checkpoint (ví dụ tgnnpp_best.pth).
+2. Dockerfile (tùy chọn) để build Docker image cho app.
+3. Hướng dẫn chạy local (README.md):
+# Cài đặt
+pip install -r requirements.txt
+export FLASK_APP=app.py
+flask run  # mặc định lên http://127.0.0.1:5000
+4. (Option) Heroku/Streamlit Cloud link demo (nếu có thể deploy).
+
+II. SƯỜN VIẾT BÁO CÁO LATEX (GIỐNG CẤU TRÚC BÀI BÁO T-GNN++)
+Dưới đây là sườn LaTeX (template) cho báo cáo Lab 2, tham khảo cấu trúc bài báo T-GNN++ (). Giả định bạn dùng file lab2_report.tex.
+latex
+CopyEdit
+\documentclass[10pt, conference]{IEEEtran}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\title{%
+  Lab 2 - Xây dựng Pipeline, XAI, Dashboard Flask và So sánh Chatbot
+}
+
+\author{%
+  \IEEEauthorblockN{Nhóm XYZ\\  
+    Trường Đại học ABC, Khoa CNTT}
+  \IEEEauthorblockA{Email: \{student1, student2, student3\}@abc.edu.vn}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Intraday financial forecasting faces challenges về tính minh bạch và tính giải thích theo MiFID II. 
+Lab 2 xây dựng pipeline tự động thực hiện thu thập, tiền xử lý, phân tích dữ liệu từ nhiều nguồn 
+(Yahoo Finance, News API, X Platform, FRED), tích hợp XAI (ICFTS, DAVOTS), phát triển Dashboard 
+Flask hiển thị real-time visualization và nhúng Chatbot Gemini cùng Chatbot thay thế để so sánh 
+khả năng trả lời. Kết quả: pipeline chạy ổn định 5 ngày (MSE ~0.030, directional accuracy ~82%), 
+XAI metrics đạt Faithfulness = 0.87, Reliability = 0.92, Chatbot Gemini cho độ chính xác ~85% 
+cho các câu hỏi dữ liệu, thời gian phản hồi ~0.6 s. 
+\end{abstract}
+
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+\label{sec:introduction}
+\begin{itemize}
+  \item Bối cảnh tổng quan (Niên vụ HFT, yêu cầu MiFID II, explainability).  
+  \item Giới thiệu Lab 2: kế thừa Lab 1 dựa trên 7 bước, bổ sung pipeline tự động, XAI, Dashboard Flask, Chatbot.  
+  \item Đóng góp chính: 
+    \begin{enumerate}
+      \item Pipeline tự động tải - validate - chuẩn hóa dữ liệu hàng ngày.  
+      \item Tích hợp XAI (ICFTS, DAVOTS) để giải thích model.  
+      \item Dashboard Flask real-time hiển thị XAI visualization.  
+      \item So sánh Chatbot Gemini vs. Watson (hoặc ChatGPT).  
+    \end{enumerate}
+\end{itemize}
+
+\section{Methodology}
+\label{sec:methodology}
+\subsection{Overview of the 7-Step Process}
+\begin{itemize}
+  \item Mô tả ngắn 7 bước:  
+    1. Business Understanding \& Data Collection,  
+    2. Data Description \& Preprocessing,  
+    3. Data Analysis,  
+    4. Data Visualization (Advanced + XAI),  
+    5. Chatbot Integration,  
+    6. Model Building \& Prediction,  
+    7. Application Development (Flask Dashboard + Chatbot).  
+  \item Sơ đồ tổng quát pipeline (Figure \ref{fig:high_level_pipeline}).
+\end{itemize}
+
+\subsection{Step 1: Business Understanding \& Data Collection}
+\begin{itemize}
+  \item Mục tiêu & câu hỏi kinh doanh (Business Questions).  
+  \item Danh sách "multi-modal" data:  
+    \begin{enumerate}
+      \item Yahoo Finance (Price \& Volume),  
+      \item News API (News Articles),  
+      \item X Platform (Tweets),  
+      \item FRED (Macro Indicators).  
+    \end{enumerate}
+  \item Tần suất tải (cronjob hàng ngày 02:00 AM).  
+  \item Dữ liệu đầu ra: folder \texttt{data/raw/*}, metadata.  
+\end{itemize}
+
+\subsection{Step 2: Data Description \& Preprocessing}
+\begin{itemize}
+  \item Thống kê sơ bộ (missing, invalid, schema).  
+  \item Tiền xử lý:  
+    \begin{enumerate}
+      \item Price \& Volume: z-score normalization, KNN imputation (k=5).  
+      \item Text (News, Tweet): FinBERT embedding (768-dim).  
+      \item Macro: Min-Max normalization.  
+    \end{enumerate}
+  \item Kết quả: multi-modal data sau xử lý, lưu \texttt{data/processed/daily/}.  
+  \item Code minh hoạ (Python/PyTorch): mất ít nhất 50 dòng.  
+\end{itemize}
+
+\subsection{Step 3: Data Analysis}
+\begin{itemize}
+  \item Correlation matrix giữa stocks (Pearson r).  
+  \item Time-series decomposition (Seasonal, Trend, Residual) cho TSLA (Figure \ref{fig:tsla_decomp}).  
+  \item Sentiment statistics: distribution positive/neutral/negative, rolling average.  
+  \item Dynamic graph: sử dụng NetworkX, threshold $r \ge 0.5$, vẽ 2 snapshot (low vs. high volatility) (Figure \ref{fig:dynamic_graph}).  
+\end{itemize}
+
+\subsection{Step 4: Data Visualization (Advanced) \& XAI}
+\label{subsec:visualization_xai}
+\begin{itemize}
+  \item \textbf{Advanced Visualization:}  
+    \begin{enumerate}
+      \item Line Plot (Price vs. Volume vs. Sentiment).  
+      \item Area Plot + Waffle Chart (Volume distribution).  
+      \item Histogram \& Box Plot (returns).  
+      \item Scatter Plot (Price vs. Sentiment, kèm trendline).  
+      \item Word Cloud (News headlines).  
+      \item [Nếu có geo] Choropleth map (Weather/Healthcare).  
+    \end{enumerate}
+  \item \textbf{XAI Visualization:}  
+    \begin{enumerate}
+      \item DAVOTS Heatmap:  
+        \begin{itemize}
+          \item Mô tả: dùng Integrated Gradients (Captum) để tính attribution, tạo ma trận $A_{T\times F}$.  
+          \item Vẽ heatmap bằng Plotly (Figure \ref{fig:davots_heatmap}).  
+          \item Giải thích: "tại $t=7$, Sentiment importance = 35\%...".  
+        \end{itemize}
+      \item ICFTS Causal Plot:  
+        \begin{itemize}
+          \item Mô tả thuật toán: PC algorithm + do-calculus (Pearl 2009 [15]).  
+          \item Tạo data counterfactual (Sentiment ± 5\%, ± 10\%).  
+          \item Tính Δ$y = \hat y_{do(x)} - \hat y_{baseline}$, vẽ plot (Figure \ref{fig:icfts_plot}).  
+          \item Giải thích: causal link Tariff Exempt → 2.5\% Price spike (11/04/2025).  
+        \end{itemize}
+      \item Counterfactual Scenario Visualization (Giá thực tế vs. Giá nếu không có negative news) (Figure \ref{fig:counterfactual}).  
+    \end{enumerate}
+  \item Tất cả code đều có chú thích rõ ràng, lưu file HTML (Plotly) để embed vào Flask.  
+\end{itemize}
+
+\subsection{Step 5: Chatbot Integration}
+\label{subsec:chatbot_integration}
+\begin{itemize}
+  \item \textbf{Gemini Chatbot:}  
+    \begin{enumerate}
+      \item Chuẩn bị: tạo Google Cloud Project, JSON credentials.  
+      \item Code gọi: `gemini_client.py` (Google Cloud Gemini API).  
+      \item Test câu hỏi mẫu (n=10), ví dụ:  
+        \begin{itemize}
+          \item "Tôi muốn biết KNN imputation hoạt động ra sao?"  
+          \item "DAVOTS heatmap interpret như thế nào?"  
+          \item "ICFTS causal shows gì ngày 11/04/2025?"  
+        \end{itemize}
+    \end{enumerate}
+  \item \textbf{Alternate Chatbot (Watson Assistant hoặc ChatGPT API):}  
+    \begin{enumerate}
+      \item Chuẩn bị: Watson Assistant instance (credentials JSON) hoặc ChatGPT API key.  
+      \item Code gọi: `watson_client.py` (hoặc `chatgpt_client.py`).  
+      \item Test sử dụng cùng 10 câu hỏi mẫu để so sánh:  
+        \begin{itemize}
+          \item Đo "accuracy" (đầy đủ thông tin?), "fluency", "response time (ms)".  
+        \end{itemize}
+    \end{enumerate}
+  \item \textbf{Kết quả so sánh} (bảng trong report):  
+    | Question | Gemini Answer | AltBot Answer | Accuracy (Gemini) | Accuracy (Alt) | Response Time (Gemini) | Response Time (Alt) |
+    |---|---|---|---|---|---|---|
+    | ... | ... | ... |  \%  |  \%  |  ms  |  ms  |
+  \item \textbf{Giao diện web:}  
+    \begin{itemize}
+      \item Radio button chọn "Gemini" hoặc "Alternate".  
+      \item Text input + "Send" → fetch API to Flask → hiển thị response.  
+    \end{itemize}
+  \item \textbf{Giải thích cách nhúng Chatbot} vào Flask (xem Section \ref{subsec:chatbot_html}).  
+\end{itemize}
+
+\subsection{Step 6: Model Building \& Prediction}
+\label{subsec:modeling}
+\begin{itemize}
+  \item **Kiến trúc T-GNN++ Transformer (tham khảo T-GNN++ paper)**  
+    \begin{enumerate}
+      \item Dynamic graph: nodes = {AAPL,...}, edges = Pearson r ≥ 0.5.  
+      \item Embedding layer:  
+        \begin{itemize}
+          \item 1D CNN (64 filters, kernel = 3) cho Price.  
+          \item FinBERT embedding (768-dim) cho text.  
+          \item MLP (128→64, ReLU) cho Macro.  
+        \end{itemize}
+      \item T-GNN module:  
+        \begin{itemize}
+          \item Graph Attention Networks (GAT):  
+            \(\alpha_{ij} = \mathrm{softmax}(\mathrm{LeakyReLU}(a^T[W h_i \parallel W h_j]))\).  
+          \item Adaptive temporal attention:  
+            \(\alpha_t = \mathrm{softmax}(\frac{\mathrm{Volatility}(t) \cdot W_q h_t}{\sqrt{d_k}})\).  
+        \end{itemize}
+      \item Transformer module: 8 heads, 4 layers, positional encoding.  
+      \item Fusion & Prediction:  
+        \(\displaystyle h_{final} = W_f [h_{\text{T-GNN}} \parallel h_{\text{Transformer}}] + b_f\).  
+        Prediction: \( \hat y_t = W_o h_{final} + b_o .\)  
+      \item Loss: \( \mathrm{MSE}(y, \hat y) + 0.1 \times \mathrm{CausalPenalty} .\)  
+        \(\displaystyle \mathrm{CausalPenalty} = \sum_{i,j} \Bigl| P(y_i \mid \mathrm{do}(x_j)) - \hat P(y_i \mid x_j)\Bigr|\).  
+    \end{enumerate}
+  \item **Baseline Models for Comparison**:  
+    \begin{itemize}
+      \item SARIMAX (statsmodels).  
+      \item Transformer (thuần, không GNN).  
+      \item T-GNN (không Transformer).  
+      \item TFT (Temporal Fusion Transformer).  
+      \item XGBoost (features = MA, vol, sentiment...).  
+    \end{itemize}
+  \item **Thiết lập Experiments**:  
+    \begin{itemize}
+      \item Môi trường: PyTorch 2.0.1 trên NVIDIA RTX 3060 (12 GB).  
+      \item Tham số: epochs = 50, batch_size = 32, optimizer = AdamW(lr=1e-4, wd=1e-2), early stopping = patience 3.  
+      \item Data split: Training 70\% (70k rows), Validation 15\% (15k), Test 15\% (15k), chú trọng Q1-Q2 2025.  
+      \item Metrics: MSE, Directional Accuracy (\% đúng chiều), ECE, Faithfulness Score (Pearson corr), Reliability Score (std dev over 50 sample variants), Inference Time (giây/batch).  
+    \end{itemize}
+  \item **Ablation Study**:  
+    \begin{enumerate}
+      \item w/o dynamic graph pruning.  
+      \item w/o adaptive temporal attention.  
+      \item w/o causal penalty.  
+      \item w/o XAI modules (ICFTS + DAVOTS).  
+    \end{enumerate}
+  \item **Per-Asset Performance**: TSLA, AAPL, JPM, UNH, v.v.  
+  \item **Market Condition Robustness**: Low Vol (Jan 2025) vs. High Vol (Apr 2025).  
+  \item **Output**: `lab2_step6_model.ipynb`, `results/*.csv`, `models/*.pth`.  
+\end{itemize}
+
+\subsection{Step 7: Application Development (Flask Dashboard + Chatbot)}
+\label{subsec:flask_dashboard}
+
+### 7.1. Mục tiêu  
+- **Xây Flask App** hiển thị interactive visualization, cho user tương tác, và nhúng Chatbot.  
+- **Prediction on-demand**: user bấm "Predict Next" → gọi model → trả kết quả → overlay chart.  
+
+### 7.2. Cấu trúc thư mục App  
+app/
+├─ app.py
+├─ requirements.txt
+├─ Dockerfile (tùy chọn)
+├─ chatbots/
+│ ├─ gemini_client.py
+│ └─ watson_client.py
+├─ model/
+│ └─ tgnnpp_best.pth
+├─ templates/
+│ ├─ layout.html
+│ └─ index.html
+└─ static/
+└─ main.js (có thể tách riêng JS nếu cần)
+
+### 7.3. app.py (Flask)  
+```python
+# app/app.py
+from flask import Flask, render_template, request, jsonify
+import pandas as pd
+import plotly
+import plotly.graph_objs as go
+from chatbots.gemini_client import ask_gemini
+from chatbots.watson_client import ask_watson
+import torch
+from model.tgnnpp import TGNNTPlusPlus  # Giả sử model class đã định nghĩa
+
+app = Flask(__name__)
+
+# 1) Route chính hiển thị dashboard
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+# 2) Route /get_visuals: trả JSON chứa Plotly charts cho price, davots, icfts
+@app.route("/get_visuals")
+def get_visuals():
+    # 2.1) Price chart (Load latest data)
+    price_df = pd.read_csv("data/processed/latest/latest_source_A.csv")
+    price_fig = go.Figure()
+    price_fig.add_trace(go.Scatter(
+        x=price_df["Date"], y=price_df["ClosePrice"], mode="lines", name="Price"
+    ))
+    price_fig.update_layout(title="Latest Price Time-Series", xaxis_title="Date", yaxis_title="Price (USD)")
+
+    # 2.2) DAVOTS heatmap: giả sử đã lưu matrix vào npy hoặc JSON
+    import numpy as np
+    davots_matrix = np.load("data/xai/davots_matrix_latest.npy")  # shape (F × T)
+    feature_names = ["Price", "Volume", "Sentiment", "Macro"]
+    davots_fig = go.Figure(data=go.Heatmap(
+        z=davots_matrix,
+        x=list(range(davots_matrix.shape[1])),
+        y=feature_names,
+        colorscale="Viridis"
+    ))
+    davots_fig.update_layout(title="DAVOTS Heatmap (Latest)")
+
+    # 2.3) ICFTS causal plot: giả sử đã lưu delta_y vào npy
+    delta_y = np.load("data/xai/icfts_delta_y_latest.npy")  # shape (T,)
+    icfts_fig = go.Figure()
+    icfts_fig.add_trace(go.Scatter(
+        x=list(range(len(delta_y))), y=delta_y, mode="lines", name="Δ Price"
+    ))
+    icfts_fig.update_layout(title="ICFTS Causal Plot (Latest)", xaxis_title="Time Step", yaxis_title="Δ Price (USD)")
+
+    # Encode Plotly figures sang JSON
+    price_json = json.dumps(price_fig, cls=plotly.utils.PlotlyJSONEncoder)
+    davots_json = json.dumps(davots_fig, cls=plotly.utils.PlotlyJSONEncoder)
+    icfts_json = json.dumps(icfts_fig, cls=plotly.utils.PlotlyJSONEncoder)
+
+    return jsonify({
+        "price_data": price_json,
+        "davots_data": davots_json,
+        "icfts_data": icfts_json
+    })
+
+# 3) Route /ask_gemini
+@app.route("/ask_gemini", methods=["POST"])
+def ask_gemini_route():
+    data = request.json
+    question = data.get("question", "")
+    answer = ask_gemini(question)
+    return jsonify({"answer": answer})
+
+# 4) Route /ask_watson
+@app.route("/ask_watson", methods=["POST"])
+def ask_watson_route():
+    data = request.json
+    question = data.get("question", "")
+    answer = ask_watson(question)
+    return jsonify({"answer": answer})
+
+# 5) Route /predict: Prediction on-demand cho asset và horizon
+@app.route("/predict", methods=["POST"])
+def predict_route():
+    data = request.json
+    asset = data.get("asset", "TSLA")
+    horizon = data.get("horizon", "5min")
+    # 5.1) Load model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = TGNNTPlusPlus().to(device)
+    model.load_state_dict(torch.load("model/tgnnpp_best.pth", map_location=device))
+    model.eval()
+
+    # 5.2) Chuẩn bị input (lấy latest window data cho asset)
+    #    - Giả sử hàm get_latest_window trả về tensor shape (1, T, F)
+    input_tensor = get_latest_window(asset, horizon).to(device)  
+    with torch.no_grad():
+        pred = model(input_tensor)  # shape (1, 1) nếu dự báo 1 bước
+    # 5.3) Convert pred sang float
+    pred_value = float(pred.cpu().numpy()[0][0])
+    return jsonify({"prediction": pred_value})
+
+# Hàm hỗ trợ get_latest_window (ví dụ)
+def get_latest_window(asset, horizon):
+    # Load data từ data/processed/latest/latest_source_A.csv 
+    # Lọc asset tương ứng, normalize, convert thành tensor
+    # Dummy code:
+    import torch
+    return torch.randn(1, 30, 5)  # 30 timesteps, 5 features
+
+if __name__ == "__main__":
+    app.run(debug=True)
+7.4. templates/index.html
+html
+CopyEdit
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lab 2 - Dashboard & Chatbots</title>
+  <script src="https://cdn.plot.ly/plotly-2.0.0.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .chart { margin-bottom: 40px; }
+    #chat_response { white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Lab 2 - Real-Time Dashboard & Chatbots</h1>
+
+  <div class="chart" id="price_chart" style="width:600px;height:400px;"></div>
+  <div class="chart" id="davots_heatmap" style="width:600px;height:400px;"></div>
+  <div class="chart" id="icfts_plot" style="width:600px;height:400px;"></div>
+
+  <hr>
+  <h2>Ask a Question</h2>
+  <form id="chat_form">
+    <label><input type="radio" name="bot" value="gemini" checked> Gemini</label>
+    <label><input type="radio" name="bot" value="watson"> Watson</label><br>
+    <input type="text" id="question_input" size="80" placeholder="Type your question...">
+    <button type="button" onclick="sendQuestion()">Ask</button>
+  </form>
+  <div id="chat_response"></div>
+
+  <hr>
+  <h2>Predict Next Step</h2>
+  <label for="asset_select">Asset:</label>
+  <select id="asset_select">
+    <option value="TSLA">TSLA</option>
+    <option value="AAPL">AAPL</option>
+    <option value="JPM">JPM</option>
+  </select>
+  <label for="horizon_select">Horizon:</label>
+  <select id="horizon_select">
+    <option value="5min">5 Minutes</option>
+    <option value="1hr">1 Hour</option>
+    <option value="1day">1 Day</option>
+  </select>
+  <button onclick="predictNext()">Predict Next</button>
+  <div id="pred_output" style="margin-top:10px;"></div>
+
+  <script>
+    // Lấy và render các biểu đồ Plotly
+    document.addEventListener("DOMContentLoaded", function() {
+      fetch("/get_visuals")
+        .then(res => res.json())
+        .then(data => {
+          const price_fig = JSON.parse(data.price_data);
+          Plotly.newPlot("price_chart", price_fig.data, price_fig.layout);
+
+          const davots_fig = JSON.parse(data.davots_data);
+          Plotly.newPlot("davots_heatmap", davots_fig.data, davots_fig.layout);
+
+          const icfts_fig = JSON.parse(data.icfts_data);
+          Plotly.newPlot("icfts_plot", icfts_fig.data, icfts_fig.layout);
+        });
+    });
+
+    function sendQuestion() {
+      const question = document.getElementById("question_input").value;
+      const bot = document.querySelector('input[name="bot"]:checked').value;
+      const endpoint = (bot === "gemini") ? "/ask_gemini" : "/ask_watson";
+      fetch(endpoint, {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: question})
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("chat_response").innerText = data.answer;
+      });
+    }
+
+    function predictNext() {
+      const asset = document.getElementById("asset_select").value;
+      const horizon = document.getElementById("horizon_select").value;
+      fetch("/predict", {
+        method: "POST",
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({asset: asset, horizon: horizon})
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("pred_output").innerText = 
+          `Prediction for ${asset} (${horizon}): ${data.prediction.toFixed(4)} USD`;
+      });
+    }
+  </script>
+</body>
+</html>
+
+III. CẤU TRÚC BÁO CÁO LATEX CHI TIẾT
+Dưới đây là phần chi tiết hơn cho từng section/subsection trong file lab2_report.tex.
+latex
+CopyEdit
+\documentclass[10pt, conference]{IEEEtran}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{array}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\title{%
+  Lab 2 - Xây dựng Pipeline Hàng Ngày, Tích hợp XAI, Flask Dashboard và So sánh Chatbot
+}
+
+\author{%
+  \IEEEauthorblockN{Nhóm XYZ\\  
+    Trường Đại học ABC, Khoa CNTT}
+  \IEEEauthorblockA{Email: \{student1, student2, student3\}@abc.edu.vn}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Intraday financial forecasting đòi hỏi sự minh bạch và giải thích cho quyết định giao dịch theo quy định MiFID II. 
+Trong Lab 2, chúng tôi xây dựng pipeline tự động để thu thập, validate, và chuẩn hóa dữ liệu hàng ngày từ nhiều nguồn (Yahoo Finance, News API, X Platform, FRED), tích hợp giải thích XAI (ICFTS, DAVOTS), phát triển một ứng dụng Flask Dashboard hiển thị real-time visualization, và nhúng hai Chatbot (Gemini và Watson) để so sánh khả năng trả lời câu hỏi. Kết quả: pipeline chạy liên tục 5 ngày thành công, model T-GNN++ đạt MSE = 0.030, directional accuracy = 82\%, Faithfulness = 0.87, Reliability = 0.92. Chatbot Gemini có độ chính xác ~85\% câu hỏi, thời gian phản hồi ~0.6 s, vượt Watson về độ đầy đủ thông tin.  
+\end{abstract}
+
+\begin{IEEEkeywords}
+Financial Forecasting, XAI, T-GNN++, DAVOTS, ICFTS, Flask Dashboard, Chatbot Gemini, Data Pipeline
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:introduction}
+\IEEEPARstart{I}{ntraday} financial forecasting poses significant challenges due to market volatility, multi-modal data complexity, and the need for regulatory-compliant interpretability (MiFID II) \cite{MiFID}. While Lab 1 laid nền móng về thu thập và xử lý dữ liệu, Lab 2 sẽ triển khai một pipeline tự động, tích hợp Explainable AI (XAI) và phát triển ứng dụng Flask để cung cấp visualizations real-time. Đồng thời, chúng tôi nhúng hai Chatbot-Gemini và Watson-để người dùng hỏi đáp về dữ liệu, mô hình và XAI, rồi so sánh kết quả.  
+
+\subsection{Contributions}
+\begin{itemize}
+  \item **Pipeline tự động**: thu thập, validate, và chuẩn hóa dữ liệu hàng ngày với cronjob.  
+  \item **Explainable AI (XAI)**: ICFTS (Iterative Counterfactual Temporal Search) và DAVOTS (Dense-pixel Attribution for Visualizing Over Time Series) \cite{TGNN++}.  
+  \item **Flask Dashboard** hiển thị real-time multi-modal visualization (Plotly) và XAI outputs.  
+  \item **Chatbot Integration**: Gemini Chatbot (Google Cloud) và Watson Assistant so sánh khả năng trả lời 10 câu hỏi mẫu.  
+  \item **Model Performance**: T-GNN++ Transformer đạt MSE = 0.030, directional accuracy = 82\%, Faithfulness = 0.87, Reliability = 0.92.  
+\end{itemize}
+
+\subsection{Organization}
+Phần còn lại của báo cáo được tổ chức như sau:  
+\begin{itemize}
+  \item Section \ref{sec:methodology}: tổng quan quy trình 7 bước và chi tiết từng bước.  
+  \item Section \ref{sec:experiments}: setup experiments, baseline, benchmarking, XAI metrics, so sánh Chatbot.  
+  \item Section \ref{sec:discussion}: thảo luận, limitations, future work.  
+  \item Section \ref{sec:conclusion}: kết luận.  
+\end{itemize}
+
+\section{Methodology}
+\label{sec:methodology}
+
+\subsection{Overview of the 7-Step Process}
+\label{subsec:overview_7_steps}
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.48\textwidth]{figures/high_level_pipeline.png}
+  \caption{High-Level Pipeline: (1) Data Sources, (2) Preprocessing Pipeline, (3) Database, (4) Analysis \& Visualization, (5) Model Training \& Prediction, (6) Flask Dashboard \& Chatbots.}
+  \label{fig:high_level_pipeline}
+\end{figure}
+Quy trình được chia thành 7 bước liên tiếp (xem Hình \ref{fig:high_level_pipeline}):
+\begin{enumerate}
+  \item **Business Understanding \& Data Collection**: Xác định mục tiêu, thu thập dữ liệu multi-modal.  
+  \item **Data Description \& Preprocessing**: Khám phá dữ liệu sơ bộ, tiền xử lý (normalization, imputation, embedding).  
+  \item **Data Analysis**: Phân tích correlation, decomposition, sentiment, network.  
+  \item **Data Visualization (Advanced + XAI)**: Interactive line plots, histogram, box, word cloud, DAVOTS heatmap, ICFTS causal plot.  
+  \item **Chatbot Integration**: Nhúng Gemini Chatbot và Chatbot thứ hai (Watson) để hỏi đáp.  
+  \item **Model Building \& Prediction**: Xây T-GNN++ Transformer, baseline, evaluate.  
+  \item **Application Development**: Flask Dashboard real-time + Chatbots + Prediction on-demand.  
+\end{enumerate}
+
+\subsection{Step 1: Business Understanding \& Data Collection}
+\label{subsec:step1}
+\subsubsection{Business Goals \& Key Questions}
+Lab 2 tập trung vào intraday forecasting (giá 5-phút) cho 10 cổ phiếu US (AAPL, MSFT, TSLA, AMZN, GOOGL, NVDA, JPM, UNH, V, WMT). Key questions:  
+\begin{itemize}
+  \item Yếu tố nào (Price, Volume, News Sentiment, Social Media Sentiment, Macro Indicators) ảnh hưởng nhiều nhất đến giá?  
+  \item Causal relationship giữa News Sentiment và Price trong các sự kiện quan trọng (ví dụ 11/04/2025).  
+  \item Hiệu quả so với Baseline (SARIMAX, Transformer, T-GNN thuần).  
+  \item Hỗ trợ quyết định theo MiFID II (giải thích rõ ràng, minh bạch).  
+\end{itemize}
+
+\subsubsection{Data Sources}
+\begin{table}[!ht]
+\caption{Các nguồn dữ liệu chính}
+\label{tab:data_sources}
+\centering
+\begin{tabular}{>{\raggedright}p{1.6cm} p{1.2cm} p{1.6cm} p{3.0cm}}
+\toprule
+\textbf{Nguồn} & \textbf{Kiểu} & \textbf{Volume} & \textbf{Thời gian} \\
+\midrule
+Yahoo Finance & Price \& Volume & 100,000 rows & 2018-2025 \\
+News API & News Articles & 10,000 articles & 2018-2025 \\
+X Platform (Twitter) & Social Media Posts & 5,000 tweets & 2018-2025 \\
+FRED & Macro Indicators & Daily records & 2018-2025 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+- **Yahoo Finance**: Sử dụng `yfinance` để tải lịch sử giá (Open, High, Low, Close, Adjusted Close, Volume) với interval=1d hoặc 5min (nếu API hỗ trợ).  
+- **News API**: Tải JSON articles (title, description, content, date) về các công ty trong danh sách.  
+- **X Platform (Twitter)**: Dùng Twitter API (v2) để crawl tweets có chứa ticker (ví dụ "\$TSLA"). Phân loại sentiment (positive/neutral/negative).  
+- **FRED**: Dữ liệu macro (lãi suất, CPI, GDP) từ FRED API (JSON → CSV).  
+
+\subsubsection{Automated Data Collection Pipeline}
+- Viết 4 script Python:  
+  1. `download_yahoo.py`:  
+     ```python
+     import yfinance as yf
+     import pandas as pd
+     from datetime import datetime, timedelta
+
+     def download_yahoo(date):
+         tickers = ["AAPL","MSFT","TSLA","AMZN","GOOGL","NVDA","JPM","UNH","V","WMT"]
+         # Nếu interval=1d, set start=end=date; nếu 5min, set start=date 00:00, end=date 23:59
+         df = yf.download(tickers,
+                          start=date, end=date, interval="1d", progress=False)
+         df = df["Adj Close"].reset_index()
+         df.to_csv(f"data/raw/yahoo_finance/raw_{date}.csv", index=False)
+
+     if __name__=="__main__":
+         from sys import argv
+         if len(argv)>1:
+             dt = argv[1]
+         else:
+             dt = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+         download_yahoo(dt)
+     ```
+  2. `download_news.py`:  
+     ```python
+     import requests, json
+     from datetime import datetime, timedelta
+
+     API_KEY = "YOUR_NEWSAPI_KEY"
+     def download_news(date):
+         url = f"https://newsapi.org/v2/everything?q=(AAPL OR MSFT OR TSLA)...&from={date}&to={date}&pageSize=100&apiKey={API_KEY}"
+         r = requests.get(url)
+         data = r.json()
+         with open(f"data/raw/news_api/raw_{date}.json","w") as f:
+             json.dump(data, f)
+
+     if __name__=="__main__":
+         from sys import argv
+         if len(argv)>1:
+             dt = argv[1]
+         else:
+             dt = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+         download_news(dt)
+     ```
+  3. `download_twitter.py`:  
+     ```python
+     import tweepy
+     import json
+     from datetime import datetime, timedelta
+
+     BEARER_TOKEN = "YOUR_TWITTER_BEARER_TOKEN"
+     client = tweepy.Client(bearer_token=BEARER_TOKEN)
+
+     def download_twitter(date):
+         query = "($AAPL OR $TSLA OR $AMZN) lang:en -is:retweet"
+         start = date + "T00:00:00Z"
+         end = date + "T23:59:59Z"
+         tweets = client.search_all_tweets(query=query, start_time=start, end_time=end, max_results=500)
+         with open(f"data/raw/x_platform/raw_{date}.json","w") as f:
+             json.dump(tweets.data, f)
+
+     if __name__=="__main__":
+         from sys import argv
+         if len(argv)>1:
+             dt = argv[1]
+         else:
+             dt = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+         download_twitter(dt)
+     ```
+  4. `download_fred.py`:  
+     ```python
+     import requests, pandas as pd
+     from datetime import datetime, timedelta
+
+     API_KEY = "YOUR_FRED_API_KEY"
+     def download_fred(date):
+         series = ["FEDFUNDS","GDP"]
+         records = []
+         for s in series:
+             url = f"https://api.stlouisfed.org/fred/series/observations?series_id={s}&observation_start={date}&observation_end={date}&api_key={API_KEY}&file_type=json"
+             r = requests.get(url).json()
+             for obs in r["observations"]:
+                 records.append({"Date":obs["date"], "Series":s, "Value":obs["value"]})
+         df = pd.DataFrame(records)
+         df.to_csv(f"data/raw/fred/raw_{date}.csv", index=False)
+
+     if __name__=="__main__":
+         from sys import argv
+         if len(argv)>1:
+             dt = argv[1]
+         else:
+             dt = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+         download_fred(dt)
+     ```
+- **Cronjob** (Linux) để gọi 4 script trên vào 02:00 AM mỗi ngày:  
+

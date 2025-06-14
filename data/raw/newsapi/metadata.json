@@ -1,0 +1,9 @@
+{
+    "AAPL_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/newsapi\\AAPL_2025-05-15_2025-06-13.json",
+        "records_count": 100,
+        "actual_start": "2025-05-15",
+        "actual_end": "2025-06-13",
+        "downloaded_at": "2025-06-14 03:14:36"
+    }
+}

@@ -1,0 +1,37 @@
+{
+    "GDP_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\GDP_2020-01-01_2025-01-01.csv",
+        "records_count": 21,
+        "actual_start": "2020-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 02:35:38"
+    },
+    "CPIAUCSL_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\CPIAUCSL_2020-01-01_2025-01-01.csv",
+        "records_count": 61,
+        "actual_start": "2020-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 03:18:14"
+    },
+    "UNRATE_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\UNRATE_2020-01-01_2025-01-01.csv",
+        "records_count": 61,
+        "actual_start": "2020-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 03:18:25"
+    },
+    "FEDFUNDS_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\FEDFUNDS_2020-01-01_2025-01-01.csv",
+        "records_count": 61,
+        "actual_start": "2020-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 03:18:33"
+    },
+    "GS10_2020-01-01_2025-01-01": {
+        "filepath": "data/raw/fred\\GS10_2020-01-01_2025-01-01.csv",
+        "records_count": 61,
+        "actual_start": "2020-01-01",
+        "actual_end": "2025-01-01",
+        "downloaded_at": "2025-06-14 03:18:51"
+    }
+}

@@ -1,0 +1,21 @@
+flask==2.2.5
+requests==2.31.0
+pandas==2.0.3
+yfinance==0.2.18
+python-dotenv==1.0.0
+numpy==1.24.3
+scikit-learn==1.3.0
+matplotlib==3.7.2
+seaborn==0.12.2
+plotly==5.15.0
+dash==2.13.0
+dash-bootstrap-components==1.4.2
+lime==0.2.0.1
+shap==0.42.1
+ta==0.10.2
+flask-cors==4.0.0
+joblib==1.3.2
+transformers==4.35.0
+torch==2.1.0
+# sentence-transformers==2.2.2  # Commented out - may pull TensorFlow
+vaderSentiment==3.3.2
