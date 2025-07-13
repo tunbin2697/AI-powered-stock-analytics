@@ -1,0 +1,24 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
+--no-deps
+pygooglenews
+
+
+feedparser==6.0.10
+numpy==2.0.2
+pandas==2.2.2
+requests==2.32.3
+scikit-learn==1.6.1
+ta==0.11.0
+torch==2.6.0
+torch-geometric==2.6.1
+tqdm==4.67.1
+transformers==4.53.0
+yfinance==0.2.64
+dateparser==1.2.2
+streamlit==1.46.1
+joblib==1.5.1
+matplotlib==3.10.3
+tensorflow==2.19.0
+python-dotenv==1.1.1
+plotly==6.2.0
+wordcloud==1.9.4
