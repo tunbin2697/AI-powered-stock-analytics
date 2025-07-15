@@ -171,7 +171,6 @@ if st.session_state.step == 3:
     processed_file_path = os.path.join(Config.PROCESSED_DATA_DIR, "final_daily_data.csv")
     
     try:
-        # Load the processed data for visualizations
         final_df = pd.read_csv(processed_file_path)
         st.success("Loaded processed data for visualization.")
     except FileNotFoundError:
@@ -181,15 +180,16 @@ if st.session_state.step == 3:
     # --- General Analysis ---
     st.subheader("Overall Data Analysis")
     with st.expander("Exploratory Data Analysis (EDA)"):
-        # For EDA, we can set the Date as index
         eda_df = pd.read_csv(processed_file_path, index_col='Date', parse_dates=True)
         quick_eda(eda_df)
 
     with st.expander("Correlation Heatmap"):
-        corr_fig = visualize_service.create_correlation_heatmap(final_df)
+        corr_fig, corr_df = visualize_service.create_correlation_heatmap(final_df)
         if corr_fig:
             st.plotly_chart(corr_fig, use_container_width=True)
-
+            # Placeholder for chatbot/df analysis
+            # analyze_df_with_chatbot(corr_df)
+    
     # --- Ticker-Specific Analysis ---
     st.subheader("Ticker-Specific Analysis")
     for ticker in selected_tickers:
@@ -197,22 +197,33 @@ if st.session_state.step == 3:
         st.header(f"Visuals for {ticker}")
         
         # Price and Volume
-        ohlcv_fig = visualize_service.create_ohlcv_fig(final_df, ticker)
-        if ohlcv_fig: st.plotly_chart(ohlcv_fig, use_container_width=True)
+        ohlcv_fig, ohlcv_df = visualize_service.create_ohlcv_fig(final_df, ticker)
+        if ohlcv_fig:
+            st.plotly_chart(ohlcv_fig, use_container_width=True)
+            # Placeholder for chatbot/df analysis
+            # analyze_df_with_chatbot(ohlcv_df)
         
         # Daily Returns
-        returns_fig = visualize_service.create_daily_return_histogram(final_df, ticker)
-        if returns_fig: st.plotly_chart(returns_fig, use_container_width=True)
+        returns_fig, returns_df = visualize_service.create_daily_return_histogram(final_df, ticker)
+        if returns_fig:
+            st.plotly_chart(returns_fig, use_container_width=True)
+            # Placeholder for chatbot/df analysis
+            # analyze_df_with_chatbot(returns_df)
 
         # Sentiment Analysis
-        sentiment_fig = visualize_service.create_sentiment_line_chart(final_df, ticker)
-        if sentiment_fig: st.plotly_chart(sentiment_fig, use_container_width=True)
+        sentiment_fig, sentiment_df = visualize_service.create_sentiment_line_chart(final_df, ticker)
+        if sentiment_fig:
+            st.plotly_chart(sentiment_fig, use_container_width=True)
+            # Placeholder for chatbot/df analysis
+            # analyze_df_with_chatbot(sentiment_df)
 
         # Word Cloud from Raw News Data
         if st.session_state.news_raw_data is not None:
-            wordcloud_fig = visualize_service.create_news_wordcloud_figure(st.session_state.news_raw_data, ticker)
+            wordcloud_fig, wordcloud_df = visualize_service.create_news_wordcloud_figure(st.session_state.news_raw_data, ticker)
             if wordcloud_fig:
                 st.pyplot(wordcloud_fig)
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(wordcloud_df)
         else:
             st.warning(f"Raw news data for {ticker} not available in session state for word cloud.")
 
@@ -220,37 +231,44 @@ if st.session_state.step == 3:
     st.subheader("Macroeconomic Analysis")
     with st.expander("View Macroeconomic Indicator Charts"):
         for indicator in selected_macro_indicators:
-            macro_fig = visualize_service.create_macro_timeseries_line_chart(final_df, indicator)
+            macro_fig, macro_df = visualize_service.create_macro_timeseries_line_chart(final_df, indicator)
             if macro_fig:
                 st.plotly_chart(macro_fig, use_container_width=True)
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(macro_df)
 
     # --- Technical Analysis (All Tickers) ---
     st.subheader("Technical Indicator Analysis")
     with st.expander("RSI Charts"):
         rsi_figs = visualize_service.create_rsi_figs(final_df)
         if rsi_figs:
-            for _, fig in rsi_figs:
+            for _, fig, rsi_df in rsi_figs:
                 st.plotly_chart(fig, use_container_width=True)
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(rsi_df)
         else:
             st.write("No RSI data to display.")
             
     with st.expander("Moving Average Charts"):
         ma_figs = visualize_service.create_ma_figs(final_df)
         if ma_figs:
-            for _, fig in ma_figs:
+            for _, fig, ma_df in ma_figs:
                 st.plotly_chart(fig, use_container_width=True)
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(ma_df)
         else:
             st.write("No Moving Average data to display.")
         
-        # --- Missing Value Bar Chart ---
+    # --- Missing Value Bar Chart ---
     st.subheader("Missing Value Analysis")
     with st.expander("Missing Value Bar Chart"):
-        missing_fig = visualize_service.create_missing_value_bar_chart(final_df)
+        missing_fig, missing_df = visualize_service.create_missing_value_bar_chart(final_df)
         if missing_fig:
             st.plotly_chart(missing_fig, use_container_width=True)
+            # Placeholder for chatbot/df analysis
+            # analyze_df_with_chatbot(missing_df)
         else:
             st.write("No missing values detected.")
-
 
     st.button("Proceed to Train Model ➡️", on_click=set_step, args=[4])
 
@@ -270,7 +288,6 @@ if st.session_state.step == 4:
 
     # --- Linear Regression Section ---
     with st.expander("Linear Regression Model"):
-        # Add a unique key to the button
         if st.button(f"Train and Evaluate LR for {target_ticker}", key="train_lr_button"):
             processed_file_path = os.path.join(Config.PROCESSED_DATA_DIR, "final_daily_data.csv")
             try:
@@ -303,7 +320,16 @@ if st.session_state.step == 4:
                 # 4. Plot Results
                 fig = linear_regression_service.create_actual_vs_predicted_figure(y_true, y_pred, dates, title=f"Linear Regression: Actual vs. Predicted for {target_ticker}")
                 st.pyplot(fig)
-                
+
+                # Create results DataFrame for chatbot analysis
+                lr_results_df = pd.DataFrame({
+                    "date": dates,
+                    "actual": y_true,
+                    "predicted": y_pred
+                })
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(lr_results_df)
+
                 # 5. Show Inference for Next Day
                 pred_price, pred_date = linear_regression_service.load_and_predict(
                     final_df, target_ticker, model_path, scaler_path, is_test=False
@@ -343,6 +369,15 @@ if st.session_state.step == 4:
                 fig_rf = random_forest_service.plot_rf_prediction(y_actual_prices, y_pred_prices, dates, title=f"RF: Actual vs. Predicted for {target_ticker}")
                 st.pyplot(fig_rf)
 
+                # Create results DataFrame for chatbot analysis
+                rf_results_df = pd.DataFrame({
+                    "date": dates,
+                    "actual": y_actual_prices,
+                    "predicted": y_pred_prices
+                })
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(rf_results_df)
+
                 # 5. Show Inference for Next Day
                 pred_price_rf = random_forest_service.load_rf_model_and_predict(final_df, target_ticker, rf_model_path, rf_scaler_path, is_test=False)
                 last_known_date = pd.to_datetime(final_df['Date']).iloc[-1]
@@ -351,7 +386,6 @@ if st.session_state.step == 4:
     # --- LSTM Section ---
     with st.expander("LSTM Model"):
         seq_length = st.slider("Select Sequence Length (days)", min_value=10, max_value=90, value=30, key="lstm_seq")
-        
         if st.button(f"Train and Evaluate LSTM for {target_ticker}", key="train_lstm_button"):
             processed_file_path = os.path.join(Config.PROCESSED_DATA_DIR, "final_daily_data.csv")
             try:
@@ -383,6 +417,15 @@ if st.session_state.step == 4:
                 )
                 fig_lstm = lstm_service.plot_lstm_results(y_true, y_pred, dates, title=f"LSTM: Actual vs. Predicted for {target_ticker}")
                 st.pyplot(fig_lstm)
+
+                # Create results DataFrame for chatbot analysis
+                lstm_results_df = pd.DataFrame({
+                    "date": dates,
+                    "actual": y_true,
+                    "predicted": y_pred
+                })
+                # Placeholder for chatbot/df analysis
+                # analyze_df_with_chatbot(lstm_results_df)
 
                 # 4. Show Inference for Next Day
                 pred_price_lstm, pred_date_lstm = lstm_service.load_and_predict_lstm(

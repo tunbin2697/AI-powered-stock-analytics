@@ -53,10 +53,8 @@ class VisualizeService:
             for rsi_type, series in rsi_dict.items():
                 if not series:
                     continue
-
                 df_plot = pd.DataFrame(series)
                 df_plot["date"] = pd.to_datetime(df_plot["date"])
-
                 fig = px.line(
                     df_plot,
                     x="date",
@@ -78,9 +76,7 @@ class VisualizeService:
                     type="line", x0=df_plot['date'].min(), x1=df_plot['date'].max(),
                     y0=30, y1=30, line=dict(color="blue", dash="dash")
                 )
-
-                figures.append((f"{stock} {rsi_type.upper()}", fig))
-
+                figures.append((f"{stock} {rsi_type.upper()}", fig, df_plot))
         return figures
 
     @staticmethod
@@ -123,7 +119,6 @@ class VisualizeService:
             for ma_type, series in ma_dict.items():
                 if not series:
                     continue
-
                 df_plot = pd.DataFrame(series)
                 fig = px.line(
                     df_plot,
@@ -137,8 +132,7 @@ class VisualizeService:
                     template="plotly_white",
                     height=400
                 )
-                figures.append((f"{stock} {ma_type.upper()}", fig))
-
+                figures.append((f"{stock} {ma_type.upper()}", fig, df_plot))
         return figures
     
     @staticmethod
@@ -170,7 +164,7 @@ class VisualizeService:
         df.sort_values(by=date_col, inplace=True)
 
         if df.empty:
-            return None
+            return None, None
 
         fig = go.Figure()
 
@@ -201,7 +195,7 @@ class VisualizeService:
             height=600
         )
 
-        return fig
+        return fig, df
     
     @staticmethod
     def create_missing_value_bar_chart(df, title="Missing Values per Column"):
@@ -214,7 +208,7 @@ class VisualizeService:
         missing_info = missing_info[missing_info['count'] > 0].sort_values(by='count', ascending=False)
 
         if missing_info.empty:
-            return None
+            return None, None
 
         fig = px.bar(
             missing_info,
@@ -226,7 +220,7 @@ class VisualizeService:
         )
         fig.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
         fig.update_layout(xaxis={'categoryorder': 'total descending'})
-        return fig
+        return fig, missing_info
 
     @staticmethod
     def create_daily_return_histogram(df, ticker):
@@ -235,11 +229,11 @@ class VisualizeService:
         """
         return_col = f'{ticker}_daily_return_stock'
         if return_col not in df.columns:
-            return None
+            return None, None
 
         returns_data = df[return_col].dropna()
         if returns_data.empty:
-            return None
+            return None, None
 
         fig = px.histogram(
             returns_data,
@@ -249,7 +243,7 @@ class VisualizeService:
             template='plotly_white'
         )
         fig.update_layout(bargap=0.1)
-        return fig
+        return fig, returns_data.to_frame(name='daily_return')
 
     @staticmethod
     def create_sentiment_line_chart(df, ticker):
@@ -264,14 +258,14 @@ class VisualizeService:
         ]
 
         if not all(col in df.columns for col in sentiment_cols):
-            return None
+            return None, None
 
         sentiment_df = df[[date_col] + sentiment_cols].copy()
         sentiment_df.dropna(subset=sentiment_cols, how='all', inplace=True)
         sentiment_df.sort_values(by=date_col, inplace=True)
 
         if sentiment_df.empty:
-            return None
+            return None, None
 
         sentiment_melted = sentiment_df.melt(
             id_vars=[date_col],
@@ -291,7 +285,7 @@ class VisualizeService:
             template='plotly_white'
         )
         fig.update_layout(yaxis=dict(range=[0, 1]))
-        return fig
+        return fig, sentiment_melted
 
     @staticmethod
     def create_macro_timeseries_line_chart(df, series_id):
@@ -301,14 +295,14 @@ class VisualizeService:
         date_col = 'Date'
         macro_col = f'{series_id}_macro'
         if macro_col not in df.columns:
-            return None
+            return None, None
 
         macro_df = df[[date_col, macro_col]].copy()
         macro_df.dropna(subset=[macro_col], inplace=True)
         macro_df.sort_values(by=date_col, inplace=True)
 
         if macro_df.empty:
-            return None
+            return None, None
 
         fig = px.line(
             macro_df,
@@ -318,7 +312,7 @@ class VisualizeService:
             labels={date_col: 'Date', macro_col: 'Value'},
             template='plotly_white'
         )
-        return fig
+        return fig, macro_df
 
     @staticmethod
     def create_correlation_heatmap(df, title="Correlation Heatmap"):
@@ -327,7 +321,7 @@ class VisualizeService:
         """
         numerical_df = df.select_dtypes(include=np.number)
         if numerical_df.empty:
-            return None
+            return None, None
 
         correlation_matrix = numerical_df.corr()
 
@@ -339,7 +333,7 @@ class VisualizeService:
             color_continuous_scale='RdBu_r'
         )
         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False)
-        return fig
+        return fig, correlation_matrix
     
     @staticmethod
     def create_news_wordcloud_figure(df, ticker):
@@ -356,12 +350,12 @@ class VisualizeService:
         title_col = f'{ticker}_title'
 
         if title_col not in df.columns:
-            return None
+            return None, None
 
         all_titles = " ".join(df[title_col].dropna().tolist())
 
         if not all_titles.strip():
-            return None
+            return None, None
 
         wordcloud = WordCloud(
             width=800,
@@ -374,4 +368,5 @@ class VisualizeService:
         ax.imshow(wordcloud, interpolation='bilinear')
         ax.axis("off")
         ax.set_title(f"Word Cloud for {ticker} News Titles")
-        return fig
+        # Return the figure and the DataFrame of titles used
+        return fig, df[[title_col]].dropna()
