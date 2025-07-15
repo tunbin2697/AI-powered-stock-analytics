@@ -17,45 +17,55 @@ import joblib
 class TGNNPP(nn.Module):
     """
     T-GNN++ Transformer Architecture for Multi-Modal Financial Forecasting.
-    This model predicts the next-day price difference.
+    This version aligns more closely with the original paper's architecture.
     """
-    def __init__(self, num_nodes, feature_dim, window_size=30, embed_dim=128, gat_heads=2, trans_heads=8, trans_layers=4):
+    def __init__(self, num_nodes, feature_dim, target_stock_index, window_size=30, embed_dim=128, gat_heads=2, gru_hidden_dim=128, trans_heads=8, trans_layers=4):
         super().__init__()
         self.num_nodes = num_nodes
         self.window_size = window_size
+        self.target_stock_index = target_stock_index # Index of the stock to predict
         gat_out_dim = 64
 
-        # A. Feature Embedding Layer: Projects combined features into a dense space
+        # A. Feature Embedding Layer
         self.feature_embed = nn.Sequential(
             nn.Linear(feature_dim, 256),
             nn.ReLU(),
             nn.Linear(256, embed_dim)
         )
 
-        # B. T-GNN Module: Captures spatial (inter-stock) correlations at each timestep
+        # B. Spatial Module: GAT captures inter-stock relations at each timestep
         self.gat = GATConv(embed_dim, gat_out_dim, heads=gat_heads, concat=True)
         
-        # C. Transformer Module: Captures temporal patterns across the window
-        transformer_input_dim = gat_out_dim * gat_heads
+        # C. Temporal Module (Part 1): GRU captures short-term temporal state for each stock
+        gat_gru_input_dim = gat_out_dim * gat_heads
+        self.gru = nn.GRU(gat_gru_input_dim, gru_hidden_dim, batch_first=True)
+
+        # D. Temporal Module (Part 2): Transformer captures long-range dependencies across the window
         self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=transformer_input_dim, nhead=trans_heads, batch_first=True),
+            nn.TransformerEncoderLayer(d_model=gru_hidden_dim, nhead=trans_heads, batch_first=True),
             num_layers=trans_layers
         )
 
-        # D. Prediction Head: Final layers to predict the price difference
+        # E. Prediction Head: Predicts from the target stock's final representation
         self.pred_head = nn.Sequential(
-            nn.Linear(transformer_input_dim, 64),
+            nn.Linear(gru_hidden_dim, 64),
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(64, 1)
         )
-        # Hook to capture transformer attention
+        
+        # Hook for XAI (DAVOTS)
         self.transformer_attention_weights = None
         self.transformer.layers[-1].self_attn.register_forward_hook(self._save_transformer_attention)
 
     def _save_transformer_attention(self, module, input, output):
-        # output[1] contains the attention weights from the MultiheadAttention layer
-        self.transformer_attention_weights = output[1]
+        # PyTorch 2.6.0: output is a tensor, not a tuple, unless need_weights=True
+        if isinstance(output, tuple) and len(output) > 1 and output[1] is not None:
+            self.transformer_attention_weights = output[1]
+        elif hasattr(output, "attn_output_weights"):
+            self.transformer_attention_weights = output.attn_output_weights
+        else:
+            self.transformer_attention_weights = None
 
     def forward(self, node_feats, edge_indices, return_attention=False):
         # node_feats: [batch_size, window_size, num_nodes, feature_dim]
@@ -65,40 +75,47 @@ class TGNNPP(nn.Module):
         embedded = self.feature_embed(node_feats.view(-1, node_feats.shape[-1]))
         embedded = embedded.view(batch_size, window_size, num_nodes, -1)
 
-        # 2. Process each time step with GAT
-        gat_outputs = []
-        all_gat_attentions = []
+        # 2. Process each time step with GAT to get spatial features
+        gat_outputs, all_gat_attentions = [], []
         for t in range(window_size):
             x_t = embedded[:, t, :, :].reshape(batch_size * num_nodes, -1)
             
+            # This logic assumes the graph structure is the same for all samples in a batch
             batch_edge_index = edge_indices[0].clone().to(node_feats.device)
             if batch_size > 1:
                 for i in range(1, batch_size):
-                    batch_edge_index = torch.cat([batch_edge_index, edge_indices[i] + i * num_nodes], dim=1)
+                    batch_edge_index = torch.cat([
+                        batch_edge_index,
+                        edge_indices[i].to(node_feats.device) + i * num_nodes
+                    ], dim=1)
 
-            # Modify GAT call to return attention weights
             gat_out, gat_attention = self.gat(x_t, batch_edge_index, return_attention_weights=True)
             
             if return_attention:
                 all_gat_attentions.append(gat_attention)
 
             gat_out = gat_out.view(batch_size, num_nodes, -1)
-            gat_outputs.append(gat_out.unsqueeze(1))
-
-        # 3. Aggregate spatial features over time
-        temporal_data = torch.cat(gat_outputs, dim=1)
-        transformer_input = temporal_data.mean(dim=2)
-
-        # 4. Transformer processing for temporal patterns
-        transformer_output = self.transformer(transformer_input)
-        final_representation = transformer_output[:, -1, :]
-
-        # 5. Predict the price difference
-        prediction = self.pred_head(final_representation).squeeze(-1)
-
+            gat_outputs.append(gat_out)
+        # [batch, window, num_nodes, feat]
+        spatial_features = torch.stack(gat_outputs, dim=1)
+        # For each stock: [batch, num_nodes, window, feat] → [batch*num_nodes, window, feat]
+        per_stock_features = spatial_features.permute(0,2,1,3).reshape(batch_size*self.num_nodes, window_size, -1)
+        gru_out, _ = self.gru(per_stock_features)
+        # --- Extract attention weights manually ---
+        transformer_layer = self.transformer.layers[-1]
+        # Get the last layer's attention weights
+        attn_output, attn_weights = transformer_layer.self_attn(
+            gru_out, gru_out, gru_out, need_weights=True, average_attn_weights=False
+        )
+        transformer_out = self.transformer(gru_out)
+        # Take last timestep
+        final_rep = transformer_out[:, -1, :]
+        # [batch, num_nodes, feat]
+        final_rep = final_rep.view(batch_size, num_nodes, -1)
+        target_stock_rep = final_rep[:, self.target_stock_index, :]
+        prediction = self.pred_head(target_stock_rep).squeeze(-1)
         if return_attention:
-            return prediction, all_gat_attentions, self.transformer_attention_weights
-        
+            return prediction, all_gat_attentions, attn_weights
         return prediction
 
 # -------------------------------------
@@ -191,7 +208,11 @@ def create_tgnn_dataset(unscaled_stock_df, scaled_stock_df, scaled_macro_df, new
         # c. Target: Next day's price difference (from unscaled data)
         current_price = unscaled_stock_df[f"{target_stock}_close_stock"].iloc[day_idx - 1]
         next_day_price = unscaled_stock_df[f"{target_stock}_close_stock"].iloc[day_idx]
-        target_diff = next_day_price - current_price
+        
+        # --- CHANGE THIS LINE ---
+        # Original: target_diff = next_day_price - current_price
+        # New: Predict percentage change
+        target_diff = (next_day_price - current_price) / current_price 
         
         # d. Metadata for evaluation and price reconstruction
         meta_info = {'current_price': current_price, 'actual_next_price': next_day_price}
@@ -204,13 +225,13 @@ def create_tgnn_dataset(unscaled_stock_df, scaled_stock_df, scaled_macro_df, new
 # 4. TRAINING AND EVALUATION FUNCTIONS
 # -------------------------------------
 
-def train_tgnn_model(dataset, feature_dim, num_stocks, model_save_path, epochs=20, lr=1e-4, batch_size=16):
+def train_tgnn_model(dataset, feature_dim, num_stocks, target_stock_index, model_save_path, epochs=20, lr=1e-4, batch_size=16):
     """Trains the T-GNN++ model and saves the best version."""
     split_idx = int(0.8 * len(dataset))
     train_data, val_data = dataset[:split_idx], dataset[split_idx:]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = TGNNPP(num_nodes=num_stocks, feature_dim=feature_dim).to(device)
+    model = TGNNPP(num_nodes=num_stocks, feature_dim=feature_dim, target_stock_index=target_stock_index).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
     
@@ -256,10 +277,10 @@ def train_tgnn_model(dataset, feature_dim, num_stocks, model_save_path, epochs=2
             torch.save(model.state_dict(), model_save_path)
             print(f"Model saved to {model_save_path} with validation loss {best_val_loss:.6f}")
 
-def test_and_plot_tgnn(test_dataset, feature_dim, num_stocks, model_path):
+def test_and_plot_tgnn(test_dataset, feature_dim, num_stocks, target_stock_index, model_path):
     """Loads a trained T-GNN++ model, evaluates it, and plots the results."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = TGNNPP(num_nodes=num_stocks, feature_dim=feature_dim).to(device)
+    model = TGNNPP(num_nodes=num_stocks, feature_dim=feature_dim, target_stock_index=target_stock_index).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
@@ -344,33 +365,27 @@ def visualize_icfts_gat_attention(model, data_sample, stock_codes, time_step_to_
 
 
 def visualize_davots_transformer_attention(model, data_sample, window_size):
-    """
-    Visualizes Transformer self-attention scores (DAVOTS).
-    This shows the temporal importance of past days.
-    """
     model.eval()
     device = next(model.parameters()).device
-    
-    # --- FIX: Re-register the hook on the loaded model ---
-    # This ensures the attention weights are captured even after loading from a file.
-    if not hasattr(model, 'transformer_attention_weights'):
-        model.transformer_attention_weights = None
-        model.transformer.layers[-1].self_attn.register_forward_hook(model._save_transformer_attention)
-    
+
     node_feats, edge_index, _, _ = data_sample
     node_feats_tensor = torch.tensor(node_feats, dtype=torch.float32).unsqueeze(0).to(device)
-    
+
     with torch.no_grad():
-        # The hook will now correctly store the attention weights
-        _ = model(node_feats_tensor, [edge_index], return_attention=True)
-    
-    # Attention weights shape: (batch_size, seq_len, seq_len)
-    # We are interested in the attention given by the last time step to all previous steps
-    attention_weights = model.transformer_attention_weights[0, -1, :].cpu().numpy()
-    
-    # Plotting
+        _, _, attn_weights = model(node_feats_tensor, [edge_index], return_attention=True)
+
+    if attn_weights is None:
+        print("Attention weights not captured. Please check the model forward call.")
+        return
+
+    # attn_weights shape: (batch_size * num_nodes, num_heads, seq_len, seq_len)
+    # For DAVOTS, average over heads and select the target stock
+    attn_weights = attn_weights.mean(dim=1)  # average over heads
+    # If you want the attention for the target stock's last timestep:
+    attn_for_target = attn_weights[model.target_stock_index, -1, :].cpu().numpy()
+
     plt.figure(figsize=(14, 6))
-    plt.bar(range(window_size), attention_weights, color='skyblue')
+    plt.bar(range(window_size), attn_for_target, color='skyblue')
     plt.xlabel("Time Steps (Days before prediction)")
     plt.ylabel("Attention Score")
     plt.title("DAVOTS: Transformer Self-Attention (Temporal Importance)")
@@ -384,82 +399,73 @@ def visualize_davots_transformer_attention(model, data_sample, window_size):
 # 7. EXAMPLE USAGE (UPDATED)
 # -------------------------------------
 if __name__ == '__main__':
-    # --- Create Dummy Data (to mimic your setup) ---
-    dates = pd.to_datetime(pd.date_range(start='2023-01-01', periods=300))
-    stock_data = {
-        'Date': dates,
-        'AAPL_close_stock': 150 + np.random.randn(300).cumsum(),
-        'AAPL_rsi14_stock': 50 + np.random.randn(300) * 10,
-        'TSLA_close_stock': 800 + np.random.randn(300).cumsum() * 2,
-        'TSLA_rsi14_stock': 50 + np.random.randn(300) * 10,
-    }
-    unscaled_stock_df = pd.DataFrame(stock_data)
+    # --- Use your processed data ---
+    # featured_stock_data, news_raw_data, ffilled_macro_data should be loaded/prepared before this block
 
-    news_data = {
-        'Date': dates,
-        'AAPL_title': ["News about Apple"] * 300,
-        'TSLA_title': ["News about Tesla"] * 300
-    }
-    news_df = pd.DataFrame(news_data)
-
-    macro_data = {
-        'Date': dates,
-        'GDP_macro': 20000 + np.random.randn(300).cumsum() * 10,
-        'CPI_macro': 280 + np.random.randn(300).cumsum() * 0.1,
-    }
-    macro_df = pd.DataFrame(macro_data)
+    # 0. Merge and fill data
+    print("Step 0: Merging and filling data...")
+    _, unscaled_stock_df, news_df, macro_df = create_main_df_tgnn(
+        featured_stock_data, news_raw_data, ffilled_macro_data
+    )
 
     TARGET_STOCK = 'AAPL'
     MODEL_SAVE_PATH = f'./models/tgnnpp_{TARGET_STOCK}.pth'
 
-    # --- Full Pipeline ---
     # 1. Scale features
     print("Step 1: Scaling features...")
     scaled_stock_df, scaled_macro_df, _, _ = scale_features(unscaled_stock_df, macro_df)
-    
+
     # 2. Generate News Embeddings (or load if already created)
     print("\nStep 2: Generating FinBERT embeddings...")
     news_embeddings = generate_finbert_embeddings(news_df)
-    
+
     # 3. Create the T-GNN++ dataset
     print("\nStep 3: Creating T-GNN++ dataset...")
     dataset, stock_codes, feature_dim = create_tgnn_dataset(
-        unscaled_stock_df, 
-        scaled_stock_df, 
-        scaled_macro_df, 
-        news_embeddings, 
+        unscaled_stock_df,
+        scaled_stock_df,
+        scaled_macro_df,
+        news_embeddings,
         target_stock=TARGET_STOCK
     )
     print(f"Dataset created with {len(dataset)} samples. Feature dimension per node: {feature_dim}")
+    print(f"Stock codes being used: {stock_codes}")
 
-    # 4. Train the model
+    # 4. Find the index of your target stock
+    try:
+        target_stock_idx = stock_codes.index(TARGET_STOCK)
+    except ValueError:
+        raise ValueError(f"Target stock {TARGET_STOCK} not found in the list of stock codes.")
+
+    # 5. Train the model
     print("\nStep 4: Training T-GNN++ model...")
     train_tgnn_model(
-        dataset, 
-        feature_dim=feature_dim, 
+        dataset,
+        feature_dim=feature_dim,
         num_stocks=len(stock_codes),
+        target_stock_index=target_stock_idx,
         model_save_path=MODEL_SAVE_PATH,
-        epochs=5 # Using fewer epochs for quick demonstration
+        epochs=5 # or more for real training
     )
 
-    # 5. Test the model and plot results
+    # 6. Test the model and plot results
     print("\nStep 5: Testing model and plotting results...")
     test_split_index = int(0.8 * len(dataset))
     test_dataset = dataset[test_split_index:]
-    test_and_plot_tgnn(test_dataset, feature_dim, len(stock_codes), MODEL_SAVE_PATH)
+    test_and_plot_tgnn(test_dataset, feature_dim, len(stock_codes), target_stock_idx, MODEL_SAVE_PATH)
 
-    # 6. Generate XAI Visualizations for a sample from the test set
+    # 7. Generate XAI Visualizations for a sample from the test set
     print("\nStep 6: Generating XAI visualizations for one test sample...")
     xai_sample = test_dataset[0] # Use the first sample of the test set for explanation
-    
-    # Load the trained model
-    model = TGNNPP(num_nodes=len(stock_codes), feature_dim=feature_dim)
+
+    # Load the trained model for XAI
+    model = TGNNPP(num_nodes=len(stock_codes), feature_dim=feature_dim, target_stock_index=target_stock_idx)
     model.load_state_dict(torch.load(MODEL_SAVE_PATH))
-    model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu")) # Move model to device
-    
+    model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+
     # ICFTS Plot
     visualize_icfts_gat_attention(model, xai_sample, stock_codes)
-    
+
     # DAVOTS Plot
     visualize_davots_transformer_attention(model, xai_sample, window_size=30)
 

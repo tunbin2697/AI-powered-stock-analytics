@@ -1,109 +1,210 @@
-# Project Structure and Development Guide
+# T-GNN++ for Multi-Asset Financial Forecasting
 
-This document provides an overview of the `routes` and `services` folders in this project, along with guidance for custom frontend development and API testing.
-The main idea of this project is using python to handle data fetch form yfinance and other source, process those data and then train models. Use those model for prediction purpose.
+## What is T-GNN++?
 
-## Folder Structure
+**T-GNN++** (Temporal Graph Neural Network++) is an advanced deep learning architecture for financial time series forecasting. It leverages both **spatial relationships** (between multiple assets/stocks) and **temporal dependencies** (across time) to predict the next-day price movement of a target stock. T-GNN++ is especially powerful for multi-modal data, integrating stock prices, news sentiment, and macroeconomic indicators.
 
-### `src/routes/`
+---
 
-The `src/routes/` directory contains the API endpoint definitions for the application. These files define the URLs that clients (like a web browser or mobile app) can use to interact with the backend. Each route typically handles incoming requests, validates parameters, calls the appropriate service to perform business logic, and then formats and returns a response (often in JSON format).
+## T-GNN++ Architecture Overview
 
-For example, `prediction_routes.py` defines endpoints related to stock predictions, such as `/api/stock/predict`.
+The T-GNN++ model consists of three main modules:
 
-### `src/services/`
+1. **Spatial Module (GAT):**
 
-The `src/services/` directory houses the core business logic of the application. Services are responsible for tasks like:
+   - Uses a Graph Attention Network (GAT) to model inter-stock (cross-asset) relationships at each time step.
+   - Each node (stock) attends to its correlated peers, capturing market structure.
 
-- Fetching data from external sources (e.g., stock data APIs).
-- Interacting with the machine learning models (`ml_service.py`).
-- Performing calculations and data transformations.
-- Preparing data for predictions (`prediction_service.py`).
+2. **Short-Term Temporal Module (GRU):**
 
-Routes call methods within these services to perform the actual work, keeping the route handlers clean and focused on request/response handling. This separation of concerns makes the codebase more modular, testable, and maintainable.
+   - For each stock, a Gated Recurrent Unit (GRU) models its own short-term temporal evolution.
+   - This allows the model to remember recent patterns for each asset.
 
-## Custom Frontend Development
+3. **Long-Term Temporal Module (Transformer):**
 
-The project come with a default `index.html`. For development purposes, you'll want to replace this with your own custom HTML, CSS, and JavaScript files to build your user interface.
+   - A Transformer Encoder captures long-range dependencies across the time window for each stock.
+   - This module enables the model to focus on the most relevant days in the past for prediction.
 
-**Steps to integrate your custom frontend:**
+4. **Prediction Head:**
+   - Only the representation of the **target stock** is used to predict its next-day price difference (or return).
 
-1.  **Locate the Static Files Directory:** Your Flask application will be configured to serve static files (HTML, CSS, JS) from a specific directory. This is  a folder named `static` contain JavaScripts and CSS; `template` contain main html file called `index.html` at the root of your `src` directory or alongside your main application file. I
+**Pipeline:**  
+`[Features for all stocks, news, macro] → GAT (spatial) → GRU (temporal) → Transformer (long-term) → Predict target stock`
 
-2.  **Remove or Replace `index.html`:**
+---
 
-    - Navigate to the directory `templates`.
-    - You can delete the existing `index.html`.
-    - Place your main HTML file (e.g., `your_main_page.html`) in this directory. You should name it `index.html`, it will typically be served by default when accessing the root URL (e.g., `http://localhost:5000/`).
-    - You also dont need to remove CSS and JavaScripts file, just leave it there and use your own in you html file (next step)
+## Code Structure and Key Functions
 
-3.  **Add Your CSS and JS Files:**
+This section explains the main code components, their purpose, and their input/output.
 
-    - Create your own CSS and JavaScripts files that will make you HTML file work.
-    - Place your `.css` files and your `.js` files in somewhere. You should use the templates folder and copy the path to them in your html code as show in next step.
-    - Link them in your HTML file:
-      ```html
-      <!-- In your HTML file -->
-      <link rel="stylesheet" href="/your_styles.css" />
-      <!-- ... -->
-      <script src="/your_script.js"></script>
-      ```
-      _(Adjust paths if your `path` is different)_
+### 1. Model Definition: `TGNNPP` class
 
-4.  **Using an AI Assistant for Frontend Code:**
-    - If you need help generating HTML, CSS, or JavaScript for your frontend, you can describe your desired layout, components, or functionality to an AI programming assistant (like GitHub Copilot).
-    - For example, you could ask: "Generate HTML for a form with input fields for stock symbol, period, and days, and a button to submit." or "Write JavaScript to fetch data from `/api/stock/predict` and display the results."
+- **Purpose:** Implements the T-GNN++ architecture.
+- **Inputs:**
+  - `node_feats`: Tensor of shape `[batch_size, window_size, num_nodes, feature_dim]`
+  - `edge_indices`: List of edge index tensors for each sample in the batch
+  - `return_attention`: If `True`, returns attention weights for XAI
+- **Outputs:**
+  - If `return_attention=False`: Predicted next-day price difference for the target stock
+  - If `return_attention=True`: Tuple of (prediction, GAT attention weights, Transformer attention weights)
+- **Special Features:**
+  - Handles dynamic graph construction for each time window.
+  - Returns attention weights for explainability (DAVOTS, ICFTS).
+  - Only the target stock's representation is used for prediction.
 
-## Testing API Endpoints with `curl`
+### 2. Data Preparation Functions
 
-`curl` is a command-line tool used for transferring data with URLs. It's very useful for testing your API endpoints directly.
+#### `generate_finbert_embeddings(news_df, batch_size=16)`
 
-**General Syntax:**
+- **Purpose:** Converts news titles into FinBERT embeddings for each stock and day.
+- **Input:** `news_df` (DataFrame with columns like `AAPL_title`, `MSFT_title`, etc.)
+- **Output:** Numpy array of shape `[num_days, num_stocks, 768]` (FinBERT embedding size)
+- **Reason:** News sentiment is a key driver of stock prices; embeddings allow the model to use this information numerically.
 
-```bash
-curl [options] "[URL]"
-```
+#### `scale_features(stock_df, macro_df)`
 
-**Important:** Always enclose the URL in double quotes (`"`) if it contains special characters like `?` or `&` to prevent your shell from misinterpreting them.
+- **Purpose:** Scales stock and macroeconomic features using MinMaxScaler.
+- **Input:** `stock_df`, `macro_df` (DataFrames)
+- **Output:** Scaled DataFrames and fitted scalers
+- **Reason:** Scaling ensures all features are on a comparable scale, improving model convergence.
 
-**Examples based on `prediction_routes.py`:**
+### 3. Dataset Construction
 
-1.  **Predict Stock Price:**
+#### `create_tgnn_dataset(unscaled_stock_df, scaled_stock_df, scaled_macro_df, news_embeddings, target_stock, window_size=30, corr_threshold=0.5)`
 
-    - Endpoint: `/api/stock/predict`
-    - Method: `GET`
-    - Parameters: `code` (symbol), `period` (optional), `days` (optional), `model` (optional)
+- **Purpose:** Builds the dataset for T-GNN++ by combining all features and constructing dynamic graphs.
+- **Inputs:**
+  - Unscaled and scaled stock DataFrames
+  - Scaled macro DataFrame
+  - News embeddings
+  - Target stock symbol
+  - Window size (number of days for each sample)
+  - Correlation threshold for graph construction
+- **Outputs:**
+  - `dataset`: List of tuples `(node_features, edge_index, target_diff, meta_info)`
+  - `stock_codes`: List of stock symbols
+  - `feature_dim`: Number of features per node
+- **Reason:** Each sample contains all information needed for the model: node features, graph structure, and the prediction target.
 
-    ```bash
-    curl "http://localhost:5000/api/stock/predict?code=AAPL&period=1y&days=7&model=linear_regression"
-    ```
+### 4. Training and Evaluation
 
-    This command sends a GET request to predict the AAPL stock for the next 7 days using a 1-year historical period and the linear regression model.
+#### `train_tgnn_model(dataset, feature_dim, num_stocks, target_stock_index, model_save_path, epochs=20, lr=1e-4, batch_size=16)`
 
-2.  **Get Available Models for a Symbol:**
+- **Purpose:** Trains the T-GNN++ model and saves the best version.
+- **Inputs:**
+  - Dataset and model hyperparameters
+- **Output:**
+  - Saves the trained model to disk
+- **Reason:** Handles batching, loss calculation, and validation for robust training.
 
-    - Endpoint: `/api/stock/predict/models/<symbol>`
-    - Method: `GET`
+#### `test_and_plot_tgnn(test_dataset, feature_dim, num_stocks, target_stock_index, model_path)`
 
-    ```bash
-    curl "http://localhost:5000/api/stock/predict/models/AAPL"
-    ```
+- **Purpose:** Loads a trained model, evaluates it on the test set, and plots actual vs. predicted prices.
+- **Inputs:**
+  - Test dataset and model parameters
+- **Output:**
+  - Plots and prints evaluation metrics
+- **Reason:** Visualizes model performance for interpretation.
 
-    This command fetches the available prediction models for the AAPL stock.
+### 5. XAI Visualization
 
-**Tips for using `curl`:**
+#### `visualize_icfts_gat_attention(model, data_sample, stock_codes, time_step_to_viz=-1)`
 
-- **Check Headers:** Use `-i` to include HTTP response headers:
-  ```bash
-  curl -i "http://localhost:5000/api/stock/predict?code=AAPL"
-  ```
-- **Verbose Output:** Use `-v` for more detailed information about the request and response:
-  ```bash
-  curl -v "http://localhost:5000/api/stock/predict?code=AAPL"
-  ```
-- **POST Requests (if you add them later):**
-  ```bash
-  curl -X POST -H "Content-Type: application/json" -d '{"key":"value"}' "http://localhost:5000/api/your_post_endpoint"
-  ```
+- **Purpose:** Visualizes GAT attention scores (ICFTS) to show which stocks influenced the target at a specific time step.
+- **Inputs:**
+  - Trained model, a data sample, stock codes, and time step
+- **Output:**
+  - Heatmap plot of inter-stock attention
+- **Reason:** Provides explainability for the model's spatial reasoning.
 
-Remember to have your Flask application running when you are testing with `curl`. The default port is usually `5000`.
+#### `visualize_davots_transformer_attention(model, data_sample, window_size)`
+
+- **Purpose:** Visualizes Transformer attention (DAVOTS) to show which days in the window were most important for the prediction.
+- **Inputs:**
+  - Trained model, a data sample, window size
+- **Output:**
+  - Bar plot of temporal attention
+- **Reason:** Provides explainability for the model's temporal reasoning.
+
+---
+
+## Special Features and Dedicated Code Sections
+
+- **Dynamic Graph Construction:**  
+  The graph structure (edges) is rebuilt for each sample based on rolling correlations, reflecting changing market relationships.
+
+- **Multi-Modal Feature Integration:**  
+  The code combines price, volume, macro, and news sentiment into a single feature tensor for each node.
+
+- **Explainable AI (XAI):**  
+  The model is designed to return attention weights for both spatial (ICFTS) and temporal (DAVOTS) explainability, with dedicated visualization functions.
+
+- **Targeted Prediction:**  
+  Only the target stock's representation is used for prediction, even though the model processes all stocks.
+
+---
+
+## How to Build the T-GNN++ Dataset
+
+### 1. Data Sources
+
+- **Stock Data:** Historical prices and volumes for multiple stocks.
+- **News Data:** Daily news titles for each stock, processed into sentiment embeddings using FinBERT.
+- **Macro Data:** Daily macroeconomic indicators (e.g., interest rates, indices).
+
+### 2. Data Preprocessing & Feature Engineering
+
+- **Merge:** All data sources are merged on the date.
+- **Fill NaNs:**
+  - Stock columns: Rolling mean fill, then forward/backward fill.
+  - News sentiment: Fill missing with 0 or empty string.
+  - Macro: Forward fill.
+- **Scaling:** Stock and macro features are scaled using MinMaxScaler (except for the target variable).
+- **News Embedding:** News titles are converted to 768-dimensional FinBERT embeddings for each stock and day.
+
+### 3. Dataset Construction
+
+- For each day, a **window** of past days is used to create a sample.
+- **Node features:** For each stock, concatenate its scaled features, macro features, and news embeddings for each day in the window.
+- **Graph structure:** Dynamically constructed using rolling window correlations between stocks.
+- **Target:** The next day's percentage change in close price for the target stock.
+
+---
+
+## Why Feature the Dataset This Way?
+
+- **Multi-Asset Learning:** By including all stocks, the model can learn how assets influence each other (market structure).
+- **Multi-Modal Inputs:** Combining price, news, and macro data allows the model to capture more complex drivers of price movement.
+- **Temporal Windows:** Using a window of past days enables the model to learn both short-term and long-term dependencies.
+- **Dynamic Graphs:** Building the graph from rolling correlations allows the model to adapt to changing market relationships.
+- **Target as Percentage Change:** Predicting returns (instead of raw price) stabilizes the learning process and makes the model robust to price scale changes.
+
+---
+
+## How to Run
+
+1. **Prepare your data:**
+
+   - `featured_stock_data`, `news_raw_data`, and `ffilled_macro_data` should be loaded as pandas DataFrames.
+
+2. **Run the pipeline:**
+
+   - The main block in `tgnn_service.py` will:
+     - Merge and fill data
+     - Scale features
+     - Generate FinBERT embeddings
+     - Build the dataset
+     - Train and test the T-GNN++ model
+     - Visualize XAI explanations (ICFTS, DAVOTS)
+
+3. **Interpret results:**
+   - The model will output prediction plots and XAI visualizations to help you understand both the accuracy and the reasoning behind each prediction.
+
+---
+
+## References
+
+- [T-GNN++ Paper](https://arxiv.org/abs/2302.06653)
+- [Graph Attention Networks (GAT)](https://arxiv.org/abs/1710.10903)
+- [Transformer Encoder](https://arxiv.org/abs/1706.03762)
+- [FinBERT](https://github.com/ProsusAI/finBERT)

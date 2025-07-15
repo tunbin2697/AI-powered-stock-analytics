@@ -26,7 +26,7 @@ class VisualizeService:
         valid_rsi_types = ["rsi14", "rsi21"]
         rsi_cols = [
             col for col in df.columns
-            if any(col.lower().endswith(f"_{rsi_type}") for rsi_type in valid_rsi_types)
+            if any(col.lower().endswith(f"_{rsi_type}_stock") for rsi_type in valid_rsi_types)
         ]
 
         result = {}
@@ -100,7 +100,7 @@ class VisualizeService:
 
         # Target only specific MA types
         ma_targets = ["ma50", "ma200"]
-        ma_cols = [col for col in df.columns if any(col.endswith(f"_{target}") for target in ma_targets)]
+        ma_cols = [col for col in df.columns if any(col.endswith(f"_{target}_stock") for target in ma_targets)]
 
         result = {}
         for col in ma_cols:

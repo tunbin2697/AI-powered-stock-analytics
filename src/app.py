@@ -241,6 +241,16 @@ if st.session_state.step == 3:
                 st.plotly_chart(fig, use_container_width=True)
         else:
             st.write("No Moving Average data to display.")
+        
+        # --- Missing Value Bar Chart ---
+    st.subheader("Missing Value Analysis")
+    with st.expander("Missing Value Bar Chart"):
+        missing_fig = visualize_service.create_missing_value_bar_chart(final_df)
+        if missing_fig:
+            st.plotly_chart(missing_fig, use_container_width=True)
+        else:
+            st.write("No missing values detected.")
+
 
     st.button("Proceed to Train Model ➡️", on_click=set_step, args=[4])
 
