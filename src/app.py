@@ -13,12 +13,12 @@ from services.data_prepare_service import DataPrepareService
 from services.visualize_service import VisualizeService
 from services.linear_regression_service import LinearRegressionService
 from services.random_forest_service import RandomForestService
-from services.lstm_service import LSTMService # Import the new service
+from services.lstm_service import LSTMService
 from utils.quick_eda import quick_eda
 from chatbot import ChatBot
 
 # --- Chatbot UI Helper ---
-def chatbot_ui(df, key_prefix, chatbot):
+def chatbot_ui(df, key_prefix, chatbot, chart_description=None):
     st.markdown("**💬 Message Area**")
     msg_key = f"{key_prefix}_chatbot_msg"
     if msg_key not in st.session_state:
@@ -32,7 +32,7 @@ def chatbot_ui(df, key_prefix, chatbot):
         if st.button("Send", key=f"{key_prefix}_send"):
             start, end = context_range
             with st.spinner("Chatbot is thinking..."):
-                response = chatbot.ask_langchain_gemini(df, start, end, user_prompt)
+                response = chatbot.ask_langchain_gemini(df, start, end, user_prompt, chart_description=chart_description)
                 st.session_state[msg_key] = response
         if st.session_state[msg_key]:
             st.info(st.session_state[msg_key])
@@ -56,7 +56,7 @@ def init_services():
     visualize_service = VisualizeService()
     linear_regression_service = LinearRegressionService()
     random_forest_service = RandomForestService()
-    lstm_service = LSTMService() 
+    lstm_service = LSTMService()
     chatbot = ChatBot()
     return yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, chatbot
 
@@ -96,15 +96,9 @@ with st.sidebar:
         st.markdown("---")
         st.header("🔄 Pipeline Navigation")
         
-        # Button to restart the whole pipeline from the beginning
         st.button("Rerun from Fetching (Step 1)", on_click=set_step, args=[1], use_container_width=True)
-
-        # Button to restart from the processing step
-        # This is only enabled if the user is past step 1
         if st.session_state.step > 1:
              st.button("Rerun from Processing (Step 2)", on_click=set_step, args=[2], use_container_width=True)
-        
-        # Button to reset the entire app to its initial state
         st.button("↩️ Reset and Go Home", on_click=set_step, args=[0], use_container_width=True)
 
 # --- Pipeline Header ---
@@ -121,7 +115,6 @@ if current_step > 0:
             else:
                 st.write(f"⏭️ {steps[i]}")
     st.markdown("---")
-
 
 # --- Main Panel for Displaying Pipeline Steps ---
 
@@ -149,10 +142,25 @@ if st.session_state.step == 1:
         st.success(f"Raw data fetched and saved to `{Config.RAW_DATA_DIR}`.")
         with st.expander("View Raw Data Samples"):
             st.subheader("Stock Data")
+            stock_desc = (
+                f"Raw stock price and volume data fetched from Yahoo Finance for tickers: {', '.join(selected_tickers)} "
+                f"from {start_date_str} to {end_date_str}. Each row represents one trading day for each ticker."
+            )
+            st.caption(stock_desc)
             st.dataframe(st.session_state.yf_raw_data.head())
             st.subheader("News Data")
+            news_desc = (
+                f"Raw news headlines fetched for queries: {', '.join(selected_news_queries)} "
+                f"from {start_date_str} to {end_date_str}. Each row contains news titles for each ticker and date."
+            )
+            st.caption(news_desc)
             st.dataframe(st.session_state.news_raw_data.head())
             st.subheader("Macro Data")
+            macro_desc = (
+                f"Raw macroeconomic indicators from FRED for: {', '.join(selected_macro_indicators)} "
+                f"from {start_date_str} to {end_date_str}. Each row contains macro values for a given date."
+            )
+            st.caption(macro_desc)
             st.dataframe(st.session_state.fred_raw_data.head())
         
         st.button("Proceed to Process Data ➡️", on_click=set_step, args=[2])
@@ -179,12 +187,30 @@ if st.session_state.step == 2:
     st.success(f"Processed data saved to `{processed_file_path}`.")
     with st.expander("View Processed Data Details"):
         st.subheader("Featured Stock Data")
+        featured_desc = (
+            "Stock data after feature engineering, including technical indicators (e.g., moving averages, RSI, volatility) "
+            "for each ticker and date."
+        )
+        st.caption(featured_desc)
         st.dataframe(featured_stock_data.head())
         st.subheader("Sentimented News Data")
+        sentimented_desc = (
+            "News data after sentiment analysis, with sentiment scores (positive, negative, neutral) for each ticker and date."
+        )
+        st.caption(sentimented_desc)
         st.dataframe(sentimented_news_data.head())
         st.subheader("Forward-Filled Macro Data")
+        ffilled_macro_desc = (
+            "Macroeconomic data after forward-filling missing values, aligned by date."
+        )
+        st.caption(ffilled_macro_desc)
         st.dataframe(ffilled_macro_data.head())
         st.subheader("Final Merged DataFrame")
+        final_desc = (
+            "Final merged DataFrame combining stock features, sentimented news, and macroeconomic data for each date. "
+            "This is the main dataset used for visualization and modeling."
+        )
+        st.caption(final_desc)
         st.dataframe(final_df.head())
 
     st.button("Proceed to Visualize Data ➡️", on_click=set_step, args=[3])
@@ -205,13 +231,23 @@ if st.session_state.step == 3:
     st.subheader("Overall Data Analysis")
     with st.expander("Exploratory Data Analysis (EDA)"):
         eda_df = pd.read_csv(processed_file_path, index_col='Date', parse_dates=True)
+        eda_desc = (
+            "Exploratory Data Analysis (EDA) on the final merged dataset. "
+            "This includes summary statistics, distributions, and basic insights."
+        )
+        st.caption(eda_desc)
         quick_eda(eda_df)
 
     with st.expander("Correlation Heatmap"):
         corr_fig, corr_df = visualize_service.create_correlation_heatmap(final_df)
+        corr_desc = (
+            "Correlation heatmap showing the pairwise correlation coefficients between all numerical features in the final merged dataset. "
+            "This helps identify relationships between features."
+        )
         if corr_fig:
+            st.caption(corr_desc)
             st.plotly_chart(corr_fig, use_container_width=True)
-            chatbot_ui(corr_df, "corr_heatmap", chatbot)
+            chatbot_ui(corr_df, "corr_heatmap", chatbot, corr_desc)
     
     # --- Ticker-Specific Analysis ---
     st.subheader("Ticker-Specific Analysis")
@@ -221,28 +257,48 @@ if st.session_state.step == 3:
         
         # Price and Volume
         ohlcv_fig, ohlcv_df = visualize_service.create_ohlcv_fig(final_df, ticker)
+        ohlcv_desc = (
+            f"OHLCV (Open, High, Low, Close, Volume) candlestick chart for {ticker}. "
+            "Shows daily price movement and trading volume for the selected period."
+        )
         if ohlcv_fig:
+            st.caption(ohlcv_desc)
             st.plotly_chart(ohlcv_fig, use_container_width=True)
-            chatbot_ui(ohlcv_df, f"ohlcv_{ticker}", chatbot)
+            chatbot_ui(ohlcv_df, f"ohlcv_{ticker}", chatbot, ohlcv_desc)
         
         # Daily Returns
         returns_fig, returns_df = visualize_service.create_daily_return_histogram(final_df, ticker)
+        returns_desc = (
+            f"Histogram of daily returns for {ticker}. "
+            "Shows the distribution of percentage changes in closing price from one day to the next."
+        )
         if returns_fig:
+            st.caption(returns_desc)
             st.plotly_chart(returns_fig, use_container_width=True)
-            chatbot_ui(returns_df, f"returns_{ticker}", chatbot)
+            chatbot_ui(returns_df, f"returns_{ticker}", chatbot, returns_desc)
 
         # Sentiment Analysis
         sentiment_fig, sentiment_df = visualize_service.create_sentiment_line_chart(final_df, ticker)
+        sentiment_desc = (
+            f"Line chart of sentiment scores (positive, negative, neutral) for {ticker} over time, "
+            "derived from news headlines."
+        )
         if sentiment_fig:
+            st.caption(sentiment_desc)
             st.plotly_chart(sentiment_fig, use_container_width=True)
-            chatbot_ui(sentiment_df, f"sentiment_{ticker}", chatbot)
+            chatbot_ui(sentiment_df, f"sentiment_{ticker}", chatbot, sentiment_desc)
 
         # Word Cloud from Raw News Data
         if st.session_state.news_raw_data is not None:
             wordcloud_fig, wordcloud_df = visualize_service.create_news_wordcloud_figure(st.session_state.news_raw_data, ticker)
+            wordcloud_desc = (
+                f"Word cloud of news headlines for {ticker}. "
+                "Shows the most frequent words in news titles for the selected period."
+            )
             if wordcloud_fig:
+                st.caption(wordcloud_desc)
                 st.pyplot(wordcloud_fig)
-                chatbot_ui(wordcloud_df, f"wordcloud_{ticker}", chatbot)
+                chatbot_ui(wordcloud_df, f"wordcloud_{ticker}", chatbot, wordcloud_desc)
         else:
             st.warning(f"Raw news data for {ticker} not available in session state for word cloud.")
 
@@ -251,27 +307,42 @@ if st.session_state.step == 3:
     with st.expander("View Macroeconomic Indicator Charts"):
         for indicator in selected_macro_indicators:
             macro_fig, macro_df = visualize_service.create_macro_timeseries_line_chart(final_df, indicator)
+            macro_desc = (
+                f"Line chart of the macroeconomic indicator '{indicator}' over time. "
+                "Shows how this macro variable changes during the selected period."
+            )
             if macro_fig:
+                st.caption(macro_desc)
                 st.plotly_chart(macro_fig, use_container_width=True)
-                chatbot_ui(macro_df, f"macro_{indicator}", chatbot)
+                chatbot_ui(macro_df, f"macro_{indicator}", chatbot, macro_desc)
 
     # --- Technical Analysis (All Tickers) ---
     st.subheader("Technical Indicator Analysis")
     with st.expander("RSI Charts"):
         rsi_figs = visualize_service.create_rsi_figs(final_df)
+        rsi_desc = (
+            f"Relative Strength Index (RSI) chart for each ticker. "
+            "Shows RSI14 and RSI21 values over time, indicating overbought/oversold conditions."
+        )
         if rsi_figs:
             for idx, (_, fig, rsi_df) in enumerate(rsi_figs):
+                st.caption(rsi_desc)
                 st.plotly_chart(fig, use_container_width=True)
-                chatbot_ui(rsi_df, f"rsi_{idx}", chatbot)
+                chatbot_ui(rsi_df, f"rsi_{idx}", chatbot, rsi_desc)
         else:
             st.write("No RSI data to display.")
             
     with st.expander("Moving Average Charts"):
         ma_figs = visualize_service.create_ma_figs(final_df)
+        ma_desc = (
+            f"Moving Average (MA) chart for each ticker. "
+            "Shows MA50 and MA200 values over time, indicating trend direction."
+        )
         if ma_figs:
             for idx, (_, fig, ma_df) in enumerate(ma_figs):
+                st.caption(ma_desc)
                 st.plotly_chart(fig, use_container_width=True)
-                chatbot_ui(ma_df, f"ma_{idx}", chatbot)
+                chatbot_ui(ma_df, f"ma_{idx}", chatbot, ma_desc)
         else:
             st.write("No Moving Average data to display.")
         
@@ -279,9 +350,13 @@ if st.session_state.step == 3:
     st.subheader("Missing Value Analysis")
     with st.expander("Missing Value Bar Chart"):
         missing_fig, missing_df = visualize_service.create_missing_value_bar_chart(final_df)
+        missing_desc = (
+            "Bar chart showing the count and percentage of missing values for each column in the final merged dataset."
+        )
         if missing_fig:
+            st.caption(missing_desc)
             st.plotly_chart(missing_fig, use_container_width=True)
-            chatbot_ui(missing_df, "missing_values", chatbot)
+            chatbot_ui(missing_df, "missing_values", chatbot, missing_desc)
         else:
             st.write("No missing values detected.")
 
@@ -312,39 +387,37 @@ if st.session_state.step == 4:
                 st.stop()
 
             with st.spinner(f"Training Linear Regression model for {target_ticker}..."):
-                # Define model and scaler paths
                 model_path = os.path.join(Config.MODELS_DIR, f"lr_model_{target_ticker}.joblib")
                 scaler_path = os.path.join(Config.MODELS_DIR, f"lr_scaler_{target_ticker}.joblib")
 
-                # 1. Process Data
                 X_tr, X_te, y_tr, y_te, scaler, dates_te = linear_regression_service.process_data(
                     final_df, target_ticker, is_training=True
                 )
                 st.write("✅ Data processed and split for training/testing.")
 
-                # 2. Train and Save Model
                 linear_regression_service.train_and_save_model(X_tr, y_tr, scaler, model_path, scaler_path)
                 st.write(f"✅ Model and scaler for {target_ticker} trained and saved.")
 
-                # 3. Evaluate on Test Set
                 y_pred, y_true, dates = linear_regression_service.load_and_predict(
                     final_df, target_ticker, model_path, scaler_path, is_test=True
                 )
                 st.write("✅ Model evaluated on the test set.")
 
-                # 4. Plot Results
                 fig = linear_regression_service.create_actual_vs_predicted_figure(y_true, y_pred, dates, title=f"Linear Regression: Actual vs. Predicted for {target_ticker}")
+                lr_desc = (
+                    f"Actual vs. Predicted closing prices for {target_ticker} using a Linear Regression model. "
+                    "The plot compares model predictions to true values on the test set."
+                )
+                st.caption(lr_desc)
                 st.pyplot(fig)
 
-                # Create results DataFrame for chatbot analysis
                 lr_results_df = pd.DataFrame({
                     "date": dates,
                     "actual": y_true,
                     "predicted": y_pred
                 })
-                chatbot_ui(lr_results_df, f"lr_{target_ticker}", chatbot)
+                chatbot_ui(lr_results_df, f"lr_{target_ticker}", chatbot, lr_desc)
 
-                # 5. Show Inference for Next Day
                 pred_price, pred_date = linear_regression_service.load_and_predict(
                     final_df, target_ticker, model_path, scaler_path, is_test=False
                 )
@@ -361,37 +434,35 @@ if st.session_state.step == 4:
                 st.stop()
 
             with st.spinner(f"Training Random Forest model for {target_ticker}..."):
-                # Define model and scaler paths
                 rf_model_path = os.path.join(Config.MODELS_DIR, f"rf_model_{target_ticker}.joblib")
                 rf_scaler_path = os.path.join(Config.MODELS_DIR, f"rf_scaler_{target_ticker}.joblib")
                 
-                # Replicate the logic from the service to get the feature names
                 target_col = f"{target_ticker}_close_stock"
                 features_to_drop = ['Date', 'target_diff'] + [col for col in final_df.columns if col.endswith('_close_stock')]
                 feature_names = [col for col in final_df.columns if col not in features_to_drop]
 
-                # 1. Process Data (unpacking 7 values now)
                 X_train, _, y_train, _, scaler, _, _ = random_forest_service.process_rf_features(final_df, target_ticker, is_training=True)
                 st.write("✅ Data processed for Random Forest.")
 
-                # 2. Train and Save Model
                 random_forest_service.train_and_save_rf_model(X_train, y_train, scaler, rf_model_path, rf_scaler_path)
                 st.write(f"✅ Random Forest model and scaler for {target_ticker} trained and saved.")
 
-                # 3. Evaluate on Test Set and Plot
                 y_pred_prices, y_actual_prices, dates = random_forest_service.load_rf_model_and_predict(final_df, target_ticker, rf_model_path, rf_scaler_path, is_test=True)
                 fig_rf = random_forest_service.plot_rf_prediction(y_actual_prices, y_pred_prices, dates, title=f"RF: Actual vs. Predicted for {target_ticker}")
-                st.pyplot(fig_rf)
+                rf_desc = (
+                    f"Actual vs. Predicted closing prices for {target_ticker} using a Random Forest model. "
+                    "The plot compares model predictions to true values on the test set."
+                )
+                st.caption(rf_desc)
+                st.plotly_chart(fig_rf)
 
-                # Create results DataFrame for chatbot analysis
                 rf_results_df = pd.DataFrame({
                     "date": dates,
                     "actual": y_actual_prices,
                     "predicted": y_pred_prices
                 })
-                chatbot_ui(rf_results_df, f"rf_{target_ticker}", chatbot)
+                chatbot_ui(rf_results_df, f"rf_{target_ticker}", chatbot, rf_desc)
 
-                # 5. Show Inference for Next Day
                 pred_price_rf = random_forest_service.load_rf_model_and_predict(final_df, target_ticker, rf_model_path, rf_scaler_path, is_test=False)
                 last_known_date = pd.to_datetime(final_df['Date']).iloc[-1]
                 st.success(f"RF Predicted Next-Day Close for {target_ticker} on {last_known_date.date() + timedelta(days=1)}: **${pred_price_rf:.2f}**")
@@ -412,34 +483,34 @@ if st.session_state.step == 4:
                 lstm_scaler_path = os.path.join(Config.MODELS_DIR, f"lstm_scalers_{target_ticker}.joblib")
                 target_col_lstm = f"{target_ticker}_close_stock"
 
-                # 1. Process Data
                 X_train, y_train, _, _, scaler_X, scaler_y, _, _ = lstm_service.process_lstm_data(
                     final_df, target_col_lstm, sequence_length=seq_length, is_training=True
                 )
                 st.write("✅ Data processed for LSTM.")
 
-                # 2. Train and Save Model
                 lstm_service.train_and_save_lstm(
                     X_train, y_train, scaler_X, scaler_y, lstm_model_path, lstm_scaler_path, sequence_length=seq_length
                 )
                 st.write(f"✅ LSTM model and scalers for {target_ticker} trained and saved.")
 
-                # 3. Evaluate on Test Set and Plot
                 y_pred, y_true, dates = lstm_service.load_and_predict_lstm(
                     final_df, target_col_lstm, lstm_model_path, lstm_scaler_path, sequence_length=seq_length, is_test=True
                 )
                 fig_lstm = lstm_service.plot_lstm_results(y_true, y_pred, dates, title=f"LSTM: Actual vs. Predicted for {target_ticker}")
+                lstm_desc = (
+                    f"Actual vs. Predicted closing prices for {target_ticker} using an LSTM model. "
+                    "The plot compares model predictions to true values on the test set."
+                )
+                st.caption(lstm_desc)
                 st.pyplot(fig_lstm)
 
-                # Create results DataFrame for chatbot analysis
                 lstm_results_df = pd.DataFrame({
                     "date": dates,
                     "actual": y_true,
                     "predicted": y_pred
                 })
-                chatbot_ui(lstm_results_df, f"lstm_{target_ticker}", chatbot)
+                chatbot_ui(lstm_results_df, f"lstm_{target_ticker}", chatbot, lstm_desc)
 
-                # 4. Show Inference for Next Day
                 pred_price_lstm, pred_date_lstm = lstm_service.load_and_predict_lstm(
                     final_df, target_col_lstm, lstm_model_path, lstm_scaler_path, sequence_length=seq_length, is_test=False
                 )
