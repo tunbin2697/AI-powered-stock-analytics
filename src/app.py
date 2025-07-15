@@ -15,6 +15,29 @@ from services.linear_regression_service import LinearRegressionService
 from services.random_forest_service import RandomForestService
 from services.lstm_service import LSTMService # Import the new service
 from utils.quick_eda import quick_eda
+from chatbot import ChatBot
+
+# --- Chatbot UI Helper ---
+def chatbot_ui(df, key_prefix, chatbot):
+    st.markdown("**💬 Message Area**")
+    msg_key = f"{key_prefix}_chatbot_msg"
+    if msg_key not in st.session_state:
+        st.session_state[msg_key] = ""
+    if df is not None and not df.empty:
+        col1, col2 = st.columns([3, 7])
+        with col1:
+            context_range = st.slider("Context Range (%)", 0, 100, (0, 100), key=f"{key_prefix}_range")
+        with col2:
+            user_prompt = st.text_input("Ask a question about this data:", key=f"{key_prefix}_prompt")
+        if st.button("Send", key=f"{key_prefix}_send"):
+            start, end = context_range
+            with st.spinner("Chatbot is thinking..."):
+                response = chatbot.ask_langchain_gemini(df, start, end, user_prompt)
+                st.session_state[msg_key] = response
+        if st.session_state[msg_key]:
+            st.info(st.session_state[msg_key])
+    else:
+        st.caption("No data available for chatbot analysis.")
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -33,10 +56,11 @@ def init_services():
     visualize_service = VisualizeService()
     linear_regression_service = LinearRegressionService()
     random_forest_service = RandomForestService()
-    lstm_service = LSTMService() # Add new service
-    return yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service
+    lstm_service = LSTMService() 
+    chatbot = ChatBot()
+    return yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, chatbot
 
-yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service = init_services()
+yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, chatbot = init_services()
 
 # --- Initialize Session State ---
 if 'step' not in st.session_state:
@@ -50,7 +74,7 @@ def set_step(step_num):
     st.session_state.step = step_num
 
 # --- Main App ---
-st.title("📈 Multi-Modal Financial Analysis Dashboard")
+st.title("Multi-Modal Financial Analysis Dashboard")
 
 # --- Sidebar for User Inputs ---
 with st.sidebar:
@@ -93,9 +117,9 @@ if current_step > 0:
             if i < current_step:
                 st.success(f"✅ {steps[i]}")
             elif i == current_step:
-                st.info(f"➡️ {steps[i]}")
+                st.info(f"🟦 {steps[i]}")
             else:
-                st.write(f"⚪ {steps[i]}")
+                st.write(f"⏭️ {steps[i]}")
     st.markdown("---")
 
 
@@ -187,8 +211,7 @@ if st.session_state.step == 3:
         corr_fig, corr_df = visualize_service.create_correlation_heatmap(final_df)
         if corr_fig:
             st.plotly_chart(corr_fig, use_container_width=True)
-            # Placeholder for chatbot/df analysis
-            # analyze_df_with_chatbot(corr_df)
+            chatbot_ui(corr_df, "corr_heatmap", chatbot)
     
     # --- Ticker-Specific Analysis ---
     st.subheader("Ticker-Specific Analysis")
@@ -200,30 +223,26 @@ if st.session_state.step == 3:
         ohlcv_fig, ohlcv_df = visualize_service.create_ohlcv_fig(final_df, ticker)
         if ohlcv_fig:
             st.plotly_chart(ohlcv_fig, use_container_width=True)
-            # Placeholder for chatbot/df analysis
-            # analyze_df_with_chatbot(ohlcv_df)
+            chatbot_ui(ohlcv_df, f"ohlcv_{ticker}", chatbot)
         
         # Daily Returns
         returns_fig, returns_df = visualize_service.create_daily_return_histogram(final_df, ticker)
         if returns_fig:
             st.plotly_chart(returns_fig, use_container_width=True)
-            # Placeholder for chatbot/df analysis
-            # analyze_df_with_chatbot(returns_df)
+            chatbot_ui(returns_df, f"returns_{ticker}", chatbot)
 
         # Sentiment Analysis
         sentiment_fig, sentiment_df = visualize_service.create_sentiment_line_chart(final_df, ticker)
         if sentiment_fig:
             st.plotly_chart(sentiment_fig, use_container_width=True)
-            # Placeholder for chatbot/df analysis
-            # analyze_df_with_chatbot(sentiment_df)
+            chatbot_ui(sentiment_df, f"sentiment_{ticker}", chatbot)
 
         # Word Cloud from Raw News Data
         if st.session_state.news_raw_data is not None:
             wordcloud_fig, wordcloud_df = visualize_service.create_news_wordcloud_figure(st.session_state.news_raw_data, ticker)
             if wordcloud_fig:
                 st.pyplot(wordcloud_fig)
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(wordcloud_df)
+                chatbot_ui(wordcloud_df, f"wordcloud_{ticker}", chatbot)
         else:
             st.warning(f"Raw news data for {ticker} not available in session state for word cloud.")
 
@@ -234,28 +253,25 @@ if st.session_state.step == 3:
             macro_fig, macro_df = visualize_service.create_macro_timeseries_line_chart(final_df, indicator)
             if macro_fig:
                 st.plotly_chart(macro_fig, use_container_width=True)
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(macro_df)
+                chatbot_ui(macro_df, f"macro_{indicator}", chatbot)
 
     # --- Technical Analysis (All Tickers) ---
     st.subheader("Technical Indicator Analysis")
     with st.expander("RSI Charts"):
         rsi_figs = visualize_service.create_rsi_figs(final_df)
         if rsi_figs:
-            for _, fig, rsi_df in rsi_figs:
+            for idx, (_, fig, rsi_df) in enumerate(rsi_figs):
                 st.plotly_chart(fig, use_container_width=True)
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(rsi_df)
+                chatbot_ui(rsi_df, f"rsi_{idx}", chatbot)
         else:
             st.write("No RSI data to display.")
             
     with st.expander("Moving Average Charts"):
         ma_figs = visualize_service.create_ma_figs(final_df)
         if ma_figs:
-            for _, fig, ma_df in ma_figs:
+            for idx, (_, fig, ma_df) in enumerate(ma_figs):
                 st.plotly_chart(fig, use_container_width=True)
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(ma_df)
+                chatbot_ui(ma_df, f"ma_{idx}", chatbot)
         else:
             st.write("No Moving Average data to display.")
         
@@ -265,8 +281,7 @@ if st.session_state.step == 3:
         missing_fig, missing_df = visualize_service.create_missing_value_bar_chart(final_df)
         if missing_fig:
             st.plotly_chart(missing_fig, use_container_width=True)
-            # Placeholder for chatbot/df analysis
-            # analyze_df_with_chatbot(missing_df)
+            chatbot_ui(missing_df, "missing_values", chatbot)
         else:
             st.write("No missing values detected.")
 
@@ -327,8 +342,7 @@ if st.session_state.step == 4:
                     "actual": y_true,
                     "predicted": y_pred
                 })
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(lr_results_df)
+                chatbot_ui(lr_results_df, f"lr_{target_ticker}", chatbot)
 
                 # 5. Show Inference for Next Day
                 pred_price, pred_date = linear_regression_service.load_and_predict(
@@ -375,8 +389,7 @@ if st.session_state.step == 4:
                     "actual": y_actual_prices,
                     "predicted": y_pred_prices
                 })
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(rf_results_df)
+                chatbot_ui(rf_results_df, f"rf_{target_ticker}", chatbot)
 
                 # 5. Show Inference for Next Day
                 pred_price_rf = random_forest_service.load_rf_model_and_predict(final_df, target_ticker, rf_model_path, rf_scaler_path, is_test=False)
@@ -424,8 +437,7 @@ if st.session_state.step == 4:
                     "actual": y_true,
                     "predicted": y_pred
                 })
-                # Placeholder for chatbot/df analysis
-                # analyze_df_with_chatbot(lstm_results_df)
+                chatbot_ui(lstm_results_df, f"lstm_{target_ticker}", chatbot)
 
                 # 4. Show Inference for Next Day
                 pred_price_lstm, pred_date_lstm = lstm_service.load_and_predict_lstm(
