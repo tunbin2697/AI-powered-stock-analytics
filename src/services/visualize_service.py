@@ -12,7 +12,7 @@ class VisualizeService:
         """
         Extract RSI14 and RSI21 data from a DataFrame and return Plotly line chart figures.
 
-        Assumes columns are named like 'AAPL_rsi14', 'TSLA_rsi21', etc.
+        Assumes columns are named like 'AAPL_rsi14_stock', 'TSLA_rsi21_stock', etc.
 
         Args:
             df (pd.DataFrame): DataFrame with 'Date' and RSI columns.
@@ -22,7 +22,6 @@ class VisualizeService:
         """
         df = df.copy()
 
-        # Only accept exact rsi14 or rsi21
         valid_rsi_types = ["rsi14", "rsi21"]
         rsi_cols = [
             col for col in df.columns
@@ -32,7 +31,7 @@ class VisualizeService:
         result = {}
         for col in rsi_cols:
             try:
-                stock, rsi_type = col.split('_')
+                stock, rsi_type, _ = col.split('_')
             except ValueError:
                 continue  # Ignore malformed column names
 
@@ -84,7 +83,7 @@ class VisualizeService:
         """
         Extract MA50 and MA200 from the DataFrame and return Plotly line chart figures.
 
-        Assumes columns are named like 'AAPL_ma50', 'TSLA_ma200', etc.
+        Assumes columns are named like 'AAPL_ma50_stock', 'TSLA_ma200_stock', etc.
 
         Args:
             df (pd.DataFrame): DataFrame with 'Date' and stock MA columns.
@@ -94,16 +93,18 @@ class VisualizeService:
         """
         df = df.copy()
 
-        # Target only specific MA types
         ma_targets = ["ma50", "ma200"]
         ma_cols = [col for col in df.columns if any(col.endswith(f"_{target}_stock") for target in ma_targets)]
 
         result = {}
         for col in ma_cols:
             try:
-                stock, ma_type = col.split('_')
+                stock, ma_type, _ = col.split('_')
             except ValueError:
                 continue  # Skip if format is wrong
+
+            if ma_type not in ma_targets:
+                continue
 
             if stock not in result:
                 result[stock] = {}

@@ -20,6 +20,7 @@ tensorflow==2.19.0
 python-dotenv==1.1.1
 plotly==6.2.0
 wordcloud==1.9.4
+statsmodels==0.14.5
 langchain==0.3.26
 langchain-experimental==0.3.4
 langchain-google-genai==2.1.7
