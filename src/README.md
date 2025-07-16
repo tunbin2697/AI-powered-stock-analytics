@@ -569,7 +569,7 @@ chatbot = ChatBot()
 - Walk-forward validation in ARIMA simulates real-world prediction.
 - All models save artifacts for reproducibility and easy deployment.
 
-## \*\*These improvements make the modeling pipeline robust, accurate, and suitable for real-
+\*\*These improvements make the modeling pipeline robust, accurate, and suitable for real-time prediction
 
 ## 7. Chatbot Implementation
 
