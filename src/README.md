@@ -1,210 +1,268 @@
-# T-GNN++ for Multi-Asset Financial Forecasting
-
-## What is T-GNN++?
-
-**T-GNN++** (Temporal Graph Neural Network++) is an advanced deep learning architecture for financial time series forecasting. It leverages both **spatial relationships** (between multiple assets/stocks) and **temporal dependencies** (across time) to predict the next-day price movement of a target stock. T-GNN++ is especially powerful for multi-modal data, integrating stock prices, news sentiment, and macroeconomic indicators.
+# Financial Analysis Dashboard with AI & Chatbot
 
 ---
 
-## T-GNN++ Architecture Overview
+## 1. Main Concept
 
-The T-GNN++ model consists of three main modules:
+This project is a **Streamlit web application** that demonstrates a complete AI pipeline for financial time series analysis and prediction.  
+It covers every step:
 
-1. **Spatial Module (GAT):**
+- **Data Acquisition:** Fetching stock, news, and macroeconomic data.
+- **Data Processing:** Cleaning, merging, and aligning data.
+- **Feature Engineering:** Creating technical and sentiment features.
+- **EDA & Visualization:** Interactive charts for exploration and insight.
+- **Model Training:** Multiple models (Linear Regression, Random Forest, LSTM, ARIMA) for stock price prediction.
+- **Chatbot Integration:** An AI-powered chatbot (Gemini via LangChain) for interactive Q&A about any chart, data, or model result.
 
-   - Uses a Graph Attention Network (GAT) to model inter-stock (cross-asset) relationships at each time step.
-   - Each node (stock) attends to its correlated peers, capturing market structure.
+All steps are modular, with each service implemented as a Python class in `src/services/`, and orchestrated in `src/app.py`.  
+The chatbot logic is in `src/chatbot.py`, and all user interaction is managed through the Streamlit UI.
 
-2. **Short-Term Temporal Module (GRU):**
+**Code Example:**
 
-   - For each stock, a Gated Recurrent Unit (GRU) models its own short-term temporal evolution.
-   - This allows the model to remember recent patterns for each asset.
+```python
+# filepath: [app.py](http://_vscodecontentref_/0)
+from services.yf_service import YahooFinanceData
+from services.news_service import NewsService
+from services.macro_service import MacroService
+from services.data_prepare_service import DataPrepareService
+from services.visualize_service import VisualizeService
+from services.linear_regression_service import LinearRegressionService
+from services.random_forest_service import RandomForestService
+from services.lstm_service import LSTMService
+from services.arima_service import ARIMAService
+from chatbot import ChatBot
 
-3. **Long-Term Temporal Module (Transformer):**
-
-   - A Transformer Encoder captures long-range dependencies across the time window for each stock.
-   - This module enables the model to focus on the most relevant days in the past for prediction.
-
-4. **Prediction Head:**
-   - Only the representation of the **target stock** is used to predict its next-day price difference (or return).
-
-**Pipeline:**  
-`[Features for all stocks, news, macro] → GAT (spatial) → GRU (temporal) → Transformer (long-term) → Predict target stock`
-
----
-
-## Code Structure and Key Functions
-
-This section explains the main code components, their purpose, and their input/output.
-
-### 1. Model Definition: `TGNNPP` class
-
-- **Purpose:** Implements the T-GNN++ architecture.
-- **Inputs:**
-  - `node_feats`: Tensor of shape `[batch_size, window_size, num_nodes, feature_dim]`
-  - `edge_indices`: List of edge index tensors for each sample in the batch
-  - `return_attention`: If `True`, returns attention weights for XAI
-- **Outputs:**
-  - If `return_attention=False`: Predicted next-day price difference for the target stock
-  - If `return_attention=True`: Tuple of (prediction, GAT attention weights, Transformer attention weights)
-- **Special Features:**
-  - Handles dynamic graph construction for each time window.
-  - Returns attention weights for explainability (DAVOTS, ICFTS).
-  - Only the target stock's representation is used for prediction.
-
-### 2. Data Preparation Functions
-
-#### `generate_finbert_embeddings(news_df, batch_size=16)`
-
-- **Purpose:** Converts news titles into FinBERT embeddings for each stock and day.
-- **Input:** `news_df` (DataFrame with columns like `AAPL_title`, `MSFT_title`, etc.)
-- **Output:** Numpy array of shape `[num_days, num_stocks, 768]` (FinBERT embedding size)
-- **Reason:** News sentiment is a key driver of stock prices; embeddings allow the model to use this information numerically.
-
-#### `scale_features(stock_df, macro_df)`
-
-- **Purpose:** Scales stock and macroeconomic features using MinMaxScaler.
-- **Input:** `stock_df`, `macro_df` (DataFrames)
-- **Output:** Scaled DataFrames and fitted scalers
-- **Reason:** Scaling ensures all features are on a comparable scale, improving model convergence.
-
-### 3. Dataset Construction
-
-#### `create_tgnn_dataset(unscaled_stock_df, scaled_stock_df, scaled_macro_df, news_embeddings, target_stock, window_size=30, corr_threshold=0.5)`
-
-- **Purpose:** Builds the dataset for T-GNN++ by combining all features and constructing dynamic graphs.
-- **Inputs:**
-  - Unscaled and scaled stock DataFrames
-  - Scaled macro DataFrame
-  - News embeddings
-  - Target stock symbol
-  - Window size (number of days for each sample)
-  - Correlation threshold for graph construction
-- **Outputs:**
-  - `dataset`: List of tuples `(node_features, edge_index, target_diff, meta_info)`
-  - `stock_codes`: List of stock symbols
-  - `feature_dim`: Number of features per node
-- **Reason:** Each sample contains all information needed for the model: node features, graph structure, and the prediction target.
-
-### 4. Training and Evaluation
-
-#### `train_tgnn_model(dataset, feature_dim, num_stocks, target_stock_index, model_save_path, epochs=20, lr=1e-4, batch_size=16)`
-
-- **Purpose:** Trains the T-GNN++ model and saves the best version.
-- **Inputs:**
-  - Dataset and model hyperparameters
-- **Output:**
-  - Saves the trained model to disk
-- **Reason:** Handles batching, loss calculation, and validation for robust training.
-
-#### `test_and_plot_tgnn(test_dataset, feature_dim, num_stocks, target_stock_index, model_path)`
-
-- **Purpose:** Loads a trained model, evaluates it on the test set, and plots actual vs. predicted prices.
-- **Inputs:**
-  - Test dataset and model parameters
-- **Output:**
-  - Plots and prints evaluation metrics
-- **Reason:** Visualizes model performance for interpretation.
-
-### 5. XAI Visualization
-
-#### `visualize_icfts_gat_attention(model, data_sample, stock_codes, time_step_to_viz=-1)`
-
-- **Purpose:** Visualizes GAT attention scores (ICFTS) to show which stocks influenced the target at a specific time step.
-- **Inputs:**
-  - Trained model, a data sample, stock codes, and time step
-- **Output:**
-  - Heatmap plot of inter-stock attention
-- **Reason:** Provides explainability for the model's spatial reasoning.
-
-#### `visualize_davots_transformer_attention(model, data_sample, window_size)`
-
-- **Purpose:** Visualizes Transformer attention (DAVOTS) to show which days in the window were most important for the prediction.
-- **Inputs:**
-  - Trained model, a data sample, window size
-- **Output:**
-  - Bar plot of temporal attention
-- **Reason:** Provides explainability for the model's temporal reasoning.
+yf_service = YahooFinanceData()
+news_service = NewsService()
+macro_service = MacroService()
+prepare_service = DataPrepareService()
+visualize_service = VisualizeService()
+linear_regression_service = LinearRegressionService()
+random_forest_service = RandomForestService()
+lstm_service = LSTMService()
+arima_service = ARIMAService()
+chatbot = ChatBot()
+```
 
 ---
 
-## Special Features and Dedicated Code Sections
+## 2. Business Problem
 
-- **Dynamic Graph Construction:**  
-  The graph structure (edges) is rebuilt for each sample based on rolling correlations, reflecting changing market relationships.
+### Definition & Reasoning
 
-- **Multi-Modal Feature Integration:**  
-  The code combines price, volume, macro, and news sentiment into a single feature tensor for each node.
+**Challenge:**
 
-- **Explainable AI (XAI):**  
-  The model is designed to return attention weights for both spatial (ICFTS) and temporal (DAVOTS) explainability, with dedicated visualization functions.
+- AI and data science education lacks interactive, real-world tools.
+- Stock prediction is a classic AI problem, but most solutions are either too technical or not user-friendly.
+- Investors and students need a simple, hands-on way to explore, visualize, and predict stock prices.
 
-- **Targeted Prediction:**  
-  Only the target stock's representation is used for prediction, even though the model processes all stocks.
+**Purpose:**
 
----
+- Make AI concepts accessible through real financial data.
+- Enable users to interactively explore, visualize, and predict stock prices.
+- Provide transparency and reproducibility in the AI pipeline.
+- Offer a chatbot for natural language questions about data, models, and results.
 
-## How to Build the T-GNN++ Dataset
+### Approach
 
-### 1. Data Sources
-
-- **Stock Data:** Historical prices and volumes for multiple stocks.
-- **News Data:** Daily news titles for each stock, processed into sentiment embeddings using FinBERT.
-- **Macro Data:** Daily macroeconomic indicators (e.g., interest rates, indices).
-
-### 2. Data Preprocessing & Feature Engineering
-
-- **Merge:** All data sources are merged on the date.
-- **Fill NaNs:**
-  - Stock columns: Rolling mean fill, then forward/backward fill.
-  - News sentiment: Fill missing with 0 or empty string.
-  - Macro: Forward fill.
-- **Scaling:** Stock and macro features are scaled using MinMaxScaler (except for the target variable).
-- **News Embedding:** News titles are converted to 768-dimensional FinBERT embeddings for each stock and day.
-
-### 3. Dataset Construction
-
-- For each day, a **window** of past days is used to create a sample.
-- **Node features:** For each stock, concatenate its scaled features, macro features, and news embeddings for each day in the window.
-- **Graph structure:** Dynamically constructed using rolling window correlations between stocks.
-- **Target:** The next day's percentage change in close price for the target stock.
+- **Modular pipeline:** Each step (data, features, models, chatbot) is a dedicated service.
+- **Interactive UI:** Users select tickers, time ranges, and models, and ask questions about any chart or result.
+- **AI Integration:** Chatbot uses Gemini (Google Generative AI) via LangChain for reliable, context-aware answers.
 
 ---
 
-## Why Feature the Dataset This Way?
+## 3. Data Preparation
 
-- **Multi-Asset Learning:** By including all stocks, the model can learn how assets influence each other (market structure).
-- **Multi-Modal Inputs:** Combining price, news, and macro data allows the model to capture more complex drivers of price movement.
-- **Temporal Windows:** Using a window of past days enables the model to learn both short-term and long-term dependencies.
-- **Dynamic Graphs:** Building the graph from rolling correlations allows the model to adapt to changing market relationships.
-- **Target as Percentage Change:** Predicting returns (instead of raw price) stabilizes the learning process and makes the model robust to price scale changes.
+### Data Sources
+
+- **Stock Data:** Fetched from Yahoo Finance via `yf_service.py` for selected tickers (e.g., AAPL, TSLA).
+- **News Data:** Headlines and articles for tickers and market topics via `news_service.py`.
+- **Macroeconomic Data:** Indicators (e.g., GDP, CPI, FEDFUNDS) from FRED via `macro_service.py`.
+
+### Data Handling
+
+- **Raw Data:** Saved in CSV files for reproducibility (`Config.RAW_DATA_DIR`).
+- **Cleaning:** Remove missing or invalid entries, align by date/ticker.
+- **Alignment:** Merge datasets by date and ticker using `prepare_service.merge_and_fill_nan`.
+- **Sentiment Analysis:** News headlines are scored for positive, negative, neutral sentiment using NLP models.
+
+**Code Example:**
+
+```python
+# filepath: [app.py](http://_vscodecontentref_/2)
+st.session_state.yf_raw_data = yf_service.fetch_yahoo_data(selected_tickers, start_date_str, end_date_str)
+st.session_state.news_raw_data = news_service.fetch_news_data(selected_news_queries, start_date_str, end_date_str)
+st.session_state.fred_raw_data = macro_service.fetch_fred_data(selected_macro_indicators, start_date_str, end_date_str)
+```
+
+### Data Meaning
+
+- **Stock Data:** Daily OHLCV (Open, High, Low, Close, Volume) for each ticker.
+- **News Data:** Textual context for market events and sentiment.
+- **Macro Data:** Economic context for broader market trends.
 
 ---
 
-## How to Run
+## 4. Feature Engineering & Missing Value Handling
 
-1. **Prepare your data:**
+### Feature Engineering
 
-   - `featured_stock_data`, `news_raw_data`, and `ffilled_macro_data` should be loaded as pandas DataFrames.
+- **Technical Indicators:** Moving averages (MA50, MA200), RSI (14, 21), volatility, lag features via `yf_service.featuring_stock_data`.
+- **Returns:** Daily and log returns.
+- **Sentiment Features:** Aggregated news sentiment scores via `news_service.sentiment_3_class_news_data`.
 
-2. **Run the pipeline:**
+### Missing Value Filling
 
-   - The main block in `tgnn_service.py` will:
-     - Merge and fill data
-     - Scale features
-     - Generate FinBERT embeddings
-     - Build the dataset
-     - Train and test the T-GNN++ model
-     - Visualize XAI explanations (ICFTS, DAVOTS)
+- **Forward Fill:** Macro data is forward-filled using `macro_service.ffill_macro_data` to align with stock dates.
+- **Imputation:** For features, missing values are filled using statistical techniques (mean, median, or forward fill) in `prepare_service.merge_and_fill_nan`.
 
-3. **Interpret results:**
-   - The model will output prediction plots and XAI visualizations to help you understand both the accuracy and the reasoning behind each prediction.
+**Purpose:**
+
+- Enhance predictive power.
+- Provide richer context for models.
+- Ensure no gaps in time series for modeling.
+
+**Code Example:**
+
+```python
+featured_stock_data = yf_service.featuring_stock_data(...)
+sentimented_news_data = news_service.sentiment_3_class_news_data(...)
+ffilled_macro_data = macro_service.ffill_macro_data(...)
+final_df = prepare_service.merge_and_fill_nan(featured_stock_data, sentimented_news_data, ffilled_macro_data)
+```
 
 ---
 
-## References
+## 5. Data Visualization
 
-- [T-GNN++ Paper](https://arxiv.org/abs/2302.06653)
-- [Graph Attention Networks (GAT)](https://arxiv.org/abs/1710.10903)
-- [Transformer Encoder](https://arxiv.org/abs/1706.03762)
-- [FinBERT](https://github.com/ProsusAI/finBERT)
+### Need & Reasoning
+
+- **Understanding:** Visualizations help users grasp data distributions, trends, and relationships.
+- **Communication:** Charts make results accessible and interpretable for all users.
+
+### Purpose & Usage of Each Chart
+
+- **EDA Summary:** Quick stats and distributions for overall understanding (`quick_eda(final_df)`).
+- **Correlation Heatmap:** Identify relationships between features (`visualize_service.create_correlation_heatmap(final_df)`).
+- **OHLCV Chart:** Visualize price and volume movements (`visualize_service.create_ohlcv_fig(final_df, ticker)`).
+- **Returns Histogram:** Show volatility and risk (`visualize_service.create_daily_return_histogram(final_df, ticker)`).
+- **Sentiment Line Chart:** Track market mood over time (`visualize_service.create_sentiment_line_chart(final_df, ticker)`).
+- **Word Cloud:** Highlight frequent news topics (`visualize_service.create_news_wordcloud_figure(news_raw_data, ticker)`).
+- **Macro Timeseries:** Show economic trends (`visualize_service.create_macro_timeseries_line_chart(final_df, indicator)`).
+- **RSI & MA Charts:** Reveal technical signals (`visualize_service.create_rsi_figs(final_df)`, `visualize_service.create_ma_figs(final_df)`).
+- **Missing Value Bar Chart:** Diagnose data quality (`visualize_service.create_missing_value_bar_chart(final_df)`).
+
+**Code Example:**
+
+```python
+# filepath: [app.py](http://_vscodecontentref_/4)
+corr_fig, corr_df = visualize_service.create_correlation_heatmap(final_df)
+st.plotly_chart(corr_fig)
+chatbot_ui(corr_df, "corr_heatmap", chatbot, corr_desc)
+
+ohlcv_fig, ohlcv_df = visualize_service.create_ohlcv_fig(final_df, ticker)
+st.plotly_chart(ohlcv_fig)
+chatbot_ui(ohlcv_df, f"ohlcv_{ticker}", chatbot, ohlcv_desc)
+```
+
+---
+
+## 6. Model Services
+
+### What Are Those
+
+- **Linear Regression:** Simple baseline for price prediction (`linear_regression_service.py`).
+- **Random Forest:** Ensemble method for robust, non-linear predictions (`random_forest_service.py`).
+- **LSTM:** Deep learning for sequential/time series modeling (`lstm_service.py`).
+- **ARIMA:** Classical time series model for forecasting (`arima_service.py`).
+
+### Purpose
+
+- Compare different modeling approaches.
+- Demonstrate strengths/weaknesses of each method.
+- Enable hands-on experimentation.
+
+### How They Are Trained
+
+- **process_data:** Prepare features and targets for training.
+- **train_and_save_model:** Train the model and save it for reuse.
+- **load_and_predict:** Predict on test set (for evaluation) or next day (for inference).
+- **plot_prediction:** Visualize actual vs predicted values.
+
+**Code Example:**
+
+```python
+# filepath: [app.py](http://_vscodecontentref_/5)
+# Linear Regression
+X_tr, X_te, y_tr, y_te, scaler, dates_te = linear_regression_service.process_data(final_df, target_ticker, is_training=True)
+linear_regression_service.train_and_save_model(X_tr, y_tr, scaler, model_path, scaler_path)
+y_pred, y_true, dates = linear_regression_service.load_and_predict(final_df, target_ticker, model_path, scaler_path, is_test=True)
+fig = linear_regression_service.create_actual_vs_predicted_figure(y_true, y_pred, dates, ...)
+st.pyplot(fig)
+pred_price, pred_date = linear_regression_service.load_and_predict(final_df, target_ticker, model_path, scaler_path, is_test=False)
+st.success(f"Predicted Next-Day Close Price: ${pred_price:.2f}")
+
+# ARIMA
+y_pred, y_true, dates = arima_service.load_and_predict(final_df, target_ticker, model_path=model_path, order=(5,1,0), test_size=0.2, is_test=True)
+fig = arima_service.plot_prediction(dates, y_true, y_pred, title=f"ARIMA: Actual vs. Predicted for {target_ticker}")
+st.pyplot(fig)
+pred_price, pred_date = arima_service.load_and_predict(final_df, target_ticker, model_path=model_path, order=(5,1,0), test_size=0.2, is_test=False)
+st.success(f"ARIMA Predicted Next-Day Close for {target_ticker} on {pd.to_datetime(pred_date).date()}: **${pred_price:.2f}**")
+```
+
+### How They Predict Price
+
+- Models use processed features to predict closing prices for selected tickers.
+- Predictions are shown for both historical test data and future (next day) inference.
+
+---
+
+## 7. Chatbot Implementation
+
+### Library & Architecture
+
+- **Library:** Uses [LangChain](https://python.langchain.com/) and [Google Gemini API](https://ai.google.com/).
+- **Integration:** The chatbot is implemented in `src/chatbot.py` and called from `app.py`.
+
+### Context Management
+
+- Each chatbot call includes chart descriptions and context range to minimize token usage and maximize relevance.
+- The context is dynamically built from chart annotations and selected data range.
+
+### Reliability
+
+- **Fallbacks:** If the agent fails (e.g., parsing error, API overload), the chatbot falls back to direct Gemini API calls and rotates API keys for reliability.
+- **Error Handling:** Handles output parsing errors, model overloads, and iteration/time limits gracefully.
+- **Session State:** Chatbot responses and context are managed using Streamlit's `st.session_state` for persistence.
+
+**Code Example:**
+
+```python
+# filepath: [app.py](http://_vscodecontentref_/6)
+response = chatbot.ask_langchain_gemini(df, start, end, user_prompt, chart_description=chart_desc)
+```
+
+- The chatbot uses the DataFrame and chart description as context.
+- If the agent fails, it tries Gemini API directly, rotating keys if needed.
+
+### Notice on Context
+
+- **Context Limitation:** To reduce token usage and improve relevance, only the necessary chart description and data slice are sent to the chatbot.
+- **User Experience:** Users can ask questions about any chart, model, or result, making the dashboard interactive and informative.
+
+---
+
+## Getting Started
+
+1. **Install requirements:**  
+   `pip install -r requirements.txt`
+2. **Set up API keys:**  
+   Add your Gemini API keys to `.env`.
+3. **Run the app:**  
+   `streamlit run src/app.py`
+4. **Explore:**  
+   Select tickers, time range, and models. Visualize, train, predict, and chat!
+
+---
+
+**For more details, see the code and comments in each service and the main app file.**

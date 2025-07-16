@@ -14,6 +14,8 @@ from services.visualize_service import VisualizeService
 from services.linear_regression_service import LinearRegressionService
 from services.random_forest_service import RandomForestService
 from services.lstm_service import LSTMService
+from services.arima_service import ARIMAService
+
 from utils.quick_eda import quick_eda
 from chatbot import ChatBot
 
@@ -57,10 +59,11 @@ def init_services():
     linear_regression_service = LinearRegressionService()
     random_forest_service = RandomForestService()
     lstm_service = LSTMService()
+    arima_service = ARIMAService()
     chatbot = ChatBot()
-    return yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, chatbot
+    return yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, arima_service, chatbot
 
-yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, chatbot = init_services()
+yf_service, news_service, macro_service, prepare_service, visualize_service, linear_regression_service, random_forest_service, lstm_service, arima_service, chatbot = init_services()
 
 # --- Initialize Session State ---
 if 'step' not in st.session_state:
@@ -516,4 +519,45 @@ if st.session_state.step == 4:
                 )
                 st.success(f"LSTM Predicted Next-Day Close for {target_ticker} on {pd.to_datetime(pred_date_lstm).date() + timedelta(days=1)}: **${pred_price_lstm:.2f}**")
 
+    # --- ARIMA Section ---
+    with st.expander("ARIMA Model (Time Series Forecast)"):
+        if st.button(f"Train and Forecast ARIMA for {target_ticker}", key="train_arima_button"):
+            processed_file_path = os.path.join(Config.PROCESSED_DATA_DIR, "final_daily_data.csv")
+            try:
+                final_df = pd.read_csv(processed_file_path)
+            except FileNotFoundError:
+                st.error(f"Processed data file not found. Please go back to Step 2 to generate it.")
+                st.stop()
+
+            with st.spinner(f"Training ARIMA model for {target_ticker}..."):
+                model_path = os.path.join(Config.MODELS_DIR, f"arima_model_{target_ticker}.joblib")
+                # Test set prediction
+                y_pred, y_true, dates = arima_service.load_and_predict(final_df, target_ticker, model_path=model_path, order=(5,1,0), test_size=0.2, is_test=True)
+                arima_desc = (
+                    f"ARIMA time series forecast for {target_ticker} closing price. "
+                    "Shows actual close prices and ARIMA prediction for the test set."
+                )
+                st.caption(arima_desc)
+                fig = arima_service.plot_prediction(dates, y_true, y_pred, title=f"ARIMA: Actual vs. Predicted for {target_ticker}")
+                st.pyplot(fig)
+
+                arima_results_df = pd.DataFrame({
+                    "date": dates,
+                    "actual": y_true,
+                    "predicted": y_pred
+                })
+                chatbot_ui(arima_results_df, f"arima_{target_ticker}", chatbot, arima_desc)
+
+                # Inference: predict next day's close
+                pred_price, pred_date = arima_service.load_and_predict(final_df, target_ticker, model_path=model_path, order=(5,1,0), test_size=0.2, is_test=False)
+                st.success(f"ARIMA Predicted Next-Day Close for {target_ticker} on {pd.to_datetime(pred_date).date()}: **${pred_price:.2f}**")
+
     st.button("↩️ Restart Pipeline", on_click=set_step, args=[0])
+
+# --- Home / About Page ---
+if st.session_state.step == 0:
+    with open(os.path.join(os.path.dirname(__file__), "README.md"), "r", encoding="utf-8") as f:
+        readme_content = f.read()
+    st.markdown(readme_content, unsafe_allow_html=True)
+    st.info("Use the sidebar to select stock tickers, news queries, and macroeconomic indicators. "
+             "Then, navigate through the pipeline steps to fetch, process, visualize data, and train predictive models.")
