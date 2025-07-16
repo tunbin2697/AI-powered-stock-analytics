@@ -53,13 +53,6 @@ class YahooFinanceData:
             processed_df[prefix + 'close_stock'] = close_series
             processed_df[prefix + 'daily_return_stock'] = close_series.pct_change()
 
-            # === Core feature: log return ===
-            log_price = np.log(close_series + 1e-8)
-            processed_df[prefix + "log_return_stock"] = log_price.diff()
-
-            # === Target: next-day diff ===
-            processed_df[prefix + "diff_next_day_stock"] = processed_df[prefix + "log_return_stock"].shift(-1)
-
             if len(close_series) >= 30:
                 processed_df[prefix + 'ma50_stock'] = close_series.rolling(window=50).mean()
                 processed_df[prefix + 'volatility_stock'] = processed_df[prefix + 'daily_return_stock'].rolling(window=14).std()
